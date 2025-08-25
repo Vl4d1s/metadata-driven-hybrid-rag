@@ -1,0 +1,39 @@
+"""
+Timeline Tools using Map-Reduce and Refine Chains
+"""
+from langchain_core.tools import Tool
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.output_parsers import StrOutputParser
+from llms.base_llm import get_llm
+from .prompts import create_map_prompt, create_reduce_prompt
+
+
+def create_mapreduce_chain(data_path, user_examples=None, user_rules=None) -> str:
+    """Create regular summary using map-reduce pattern from provided data path."""
+    with open(data_path, "r", encoding="utf-8") as f:
+        text = f.read().strip()
+    llm = get_llm()
+    output_parser = StrOutputParser()
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    docs = splitter.create_documents([text])
+    map_chain = create_map_prompt(user_examples, user_rules) | llm | output_parser
+    reduce_chain = create_reduce_prompt(user_examples, user_rules) | llm | output_parser
+    map_results = []
+    for doc in docs:
+        result = map_chain.invoke({"text": doc.page_content})
+        map_results.append(result)
+    combined_text = "\n".join(map_results)
+    final_result = reduce_chain.invoke({"text": combined_text})
+    return final_result.strip()
+
+
+def get_map_reduce_summary_tool(data_path = str, examples = None, rules = None) -> Tool:
+    tool_name = "mapreduce_summary"
+    tool_description = "Use this tool to generate a regular, coherent summary using a map-reduce approach."
+    map_reduce_summary_tool = Tool(
+        name=tool_name,
+        description=tool_description,
+        func=lambda _: create_mapreduce_chain(data_path, examples, rules),
+        args_schema=None,
+    )
+    return map_reduce_summary_tool 

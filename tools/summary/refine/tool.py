@@ -1,0 +1,37 @@
+from llms.base_llm import get_llm
+from langchain_core.tools import Tool
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.output_parsers import StrOutputParser
+from tools.summary.refine.prompts import (
+    create_initial_refine_prompt,
+    create_refine_prompt,
+)
+
+def create_refine_chain(data_path, user_examples=None, user_rules=None) -> str:
+    """Create timeline using refine pattern, reading events.txt directly."""
+    with open(data_path, "r", encoding="utf-8") as f:
+        text = f.read().strip()
+    llm = get_llm()
+    output_parser = StrOutputParser()
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    docs = splitter.create_documents([text])
+    initial_chain = create_initial_refine_prompt(user_examples, user_rules) | llm | output_parser
+    refine_chain = create_refine_prompt(user_examples, user_rules) | llm | output_parser
+    current_result = initial_chain.invoke({"text": docs[0].page_content})
+    for doc in docs[1:]:
+        current_result = refine_chain.invoke({
+            "existing_timeline": current_result,
+            "new_text": doc.page_content
+        })
+    return current_result.strip()
+
+def get_refine_summary_tool(data_path = str, examples = None, rules = None) -> Tool:
+    tool_name = "refine_timeline"
+    tool_description = "Use this tool to generate a detailed timeline of insurance events from the provided text data."
+    refine_summary_tool = Tool(
+        name=tool_name,
+        description=tool_description,
+        func=lambda _: create_refine_chain(data_path, examples, rules),
+        args_schema=None,
+    )
+    return refine_summary_tool 
