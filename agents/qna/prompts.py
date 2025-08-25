@@ -1,11 +1,10 @@
-from langchain.agents import create_react_agent, AgentExecutor
-from tools.rag.qna_rag_basic import qna_rag_basic_tool
 from langchain_core.prompts import PromptTemplate
-from llms.base_llm import get_llm
+
 
 def qna_agent_prompt() -> PromptTemplate:
     """Create the agent prompt template for QnA agent"""
-    return PromptTemplate.from_template("""
+    return PromptTemplate.from_template(
+        """
 You are an insurance QnA agent. 
 Your job is simple: always use the RAG tool to answer any question and return the tool's result directly to the user.
 
@@ -27,13 +26,6 @@ Use the following format:
     Final Answer: the result from the tool
 Question: {input}
 {agent_scratchpad}
-""")
+"""
+    )
 
-def get_qna_agent(LLM=None):
-    """Create and return the QnA AgentExecutor. Optionally accept an LLM instance."""
-    llm = LLM if LLM else get_llm()
-    tools = [qna_rag_basic_tool()]
-    prompt= qna_agent_prompt()
-    agent = create_react_agent(llm , tools, prompt )
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
-    return agent_executor
