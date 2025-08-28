@@ -29,19 +29,19 @@ load_file_to_db(testing_file_path,AccidentCase)
 
 
 
-# from neo4j import GraphDatabase
-# from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
-# from neo4j_graphrag.retrievers import VectorRetriever , VectorCypherRetriever , Text2CypherRetriever
-# from neo4j_graphrag.llm import OpenAILLM
-# from neo4j_graphrag.generation import GraphRAG
-# # Connect to Neo4j database
-# driver = GraphDatabase.driver(
-#     os.getenv("NEO4J_URI"), 
-#     auth=(
-#         os.getenv("NEO4J_USERNAME"), 
-#         os.getenv("NEO4J_PASSWORD")
-#     )
-# )
+from neo4j import GraphDatabase
+from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
+from neo4j_graphrag.retrievers import VectorRetriever , VectorCypherRetriever , Text2CypherRetriever
+from neo4j_graphrag.llm import OpenAILLM
+from neo4j_graphrag.generation import GraphRAG
+# Connect to Neo4j database
+driver = GraphDatabase.driver(
+    os.getenv("NEO4J_URI"), 
+    auth=(
+        os.getenv("NEO4J_USERNAME"), 
+        os.getenv("NEO4J_PASSWORD")
+    )
+)
 
 # # Create embedder
 # embedder = OpenAIEmbeddings(model="text-embedding-ada-002")
