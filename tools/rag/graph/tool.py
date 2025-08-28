@@ -1,28 +1,39 @@
 import os
-from dotenv import load_dotenv
-load_dotenv()
 
-from neo4j import GraphDatabase
-from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
-from neo4j_graphrag.retrievers import VectorRetriever , VectorCypherRetriever , Text2CypherRetriever
-from neo4j_graphrag.llm import OpenAILLM
-from neo4j_graphrag.generation import GraphRAG
-
+# testing 
+import sys
+sys.path.insert(0, 'C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag')
+from flows.insurance.data.models.accident_case import AccidentCase
 
 # the tool will get files path and schema
 from pydantic import BaseModel
-from flows.insurance.data.models.accident_case import AccidentCase
 from tools._functions.llama_extractor import extract_file
-FILES_PATH = "C:\DEV\AI_Projects\metadata-driven-hybrid-rag\workflows\insurance\data\reports"
 
-def load_file_to_db(file_path: str , schema: BaseModel):
-    file_data = extract_file(file_path,schema)
-    print(file_data)
+from dotenv import load_dotenv
+load_dotenv()
+
+# FILES_PATH = "C:\DEV\AI_Projects\metadata-driven-hybrid-rag\workflows\insurance\data\reports"
+
+def load_file_to_db(file_path: str , schema: BaseModel ,extract_name: str="file-parser"):
+    file_data = extract_file(file_path,schema,extract_name)
+    print("file_path:",file_path)
+    print("schema:",schema)
+    print("file_data:",file_data)
     return
 
 testing_file_path = "C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag\\flows\\insurance\\data\\reports\\001.pdf"
  
 load_file_to_db(testing_file_path,AccidentCase)
+
+
+
+
+
+# from neo4j import GraphDatabase
+# from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
+# from neo4j_graphrag.retrievers import VectorRetriever , VectorCypherRetriever , Text2CypherRetriever
+# from neo4j_graphrag.llm import OpenAILLM
+# from neo4j_graphrag.generation import GraphRAG
 # # Connect to Neo4j database
 # driver = GraphDatabase.driver(
 #     os.getenv("NEO4J_URI"), 

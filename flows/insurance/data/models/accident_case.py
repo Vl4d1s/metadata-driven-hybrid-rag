@@ -1,6 +1,6 @@
 
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel
+from typing import Optional
 from .driver import Driver
 from .owner import Owner
 from .accident import Accident

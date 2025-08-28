@@ -4,6 +4,12 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 load_dotenv()
 
+# 
+from neo4j import GraphDatabase
+from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
+from neo4j_graphrag.retrievers import VectorRetriever , VectorCypherRetriever , Text2CypherRetriever
+from neo4j_graphrag.llm import OpenAILLM
+from neo4j_graphrag.generation import GraphRAG
 
 # # Initialize client
 # extractor = LlamaExtract()
@@ -24,12 +30,16 @@ load_dotenv()
 # print(result.data)
 
 
-def extract_file(file_path: str , schema: BaseModel):
+def extract_file(file_path: str = "C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag\\flows\\insurance\\data\\reports\\001.pdf" , schema: BaseModel = BaseModel , extract_name: str="file-parser"):
     """Extract resume data from a PDF file and return as a Resume object."""
+    print(f"Extracting data from {file_path} using schema {schema.__name__} with agent name '{extract_name}'")
     try:
         extractor = LlamaExtract()
-        agent = extractor.create_agent(name="file-parser", data_schema=schema)
+        agent = extractor.get_agent(name=extract_name)
+        if not agent:
+            agent = extractor.create_agent(name="file-parser", data_schema=schema)
         result = agent.extract(file_path)
+        print(f"Extracted data from {file_path}: {result.data}")
         return result.data
     except Exception as e:
         print(f"Error extracting data from {file_path}: {e}")
