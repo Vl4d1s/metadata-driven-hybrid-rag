@@ -1,5 +1,5 @@
 from langchain.agents import create_react_agent, AgentExecutor
-from tools.rag.qna_rag_basic import qna_rag_basic_tool
+from tools.rag.basic.qna_rag_basic import qna_rag_basic_tool
 from llms.base_llm import get_llm
 from agents.qna.prompts import qna_agent_prompt
 
