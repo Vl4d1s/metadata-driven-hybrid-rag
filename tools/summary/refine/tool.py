@@ -7,10 +7,13 @@ from tools.summary.refine.prompts import (
     create_refine_prompt,
 )
 
-def create_refine_chain(data_path, user_examples=None, user_rules=None) -> str:
+def create_refine_chain(data_path = None, user_examples=None, user_rules=None,exist_data=None) -> str:
     """Create timeline using refine pattern, reading events.txt directly."""
-    with open(data_path, "r", encoding="utf-8") as f:
-        text = f.read().strip()
+    if exist_data:
+        text = exist_data
+    else:
+        with open(data_path, "r", encoding="utf-8") as f:
+            text = f.read().strip()
     llm = get_llm()
     output_parser = StrOutputParser()
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)

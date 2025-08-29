@@ -9,6 +9,7 @@ from .prompts import create_router_examples
 import re
 from tools.summary.map_reduce.tool import create_mapreduce_chain
 from tools._functions.text_to_cypher import quick_text_to_cypher_search
+from tools.summary.refine.tool import create_refine_chain
 
 class SummaryToolInput(BaseModel):
     """Input schema for the summary tool"""
@@ -75,14 +76,32 @@ def process_summary_question(question: str, data_path: str) -> str:
             
             # Use text_to_cypher with the enhanced instructions
             entity_results = quick_text_to_cypher_search(enhanced_query)
-            print(f"Entity Search Results: {entity_results}")
+            # print(f"Entity Search Results: {entity_results}")
             
             # Print first and last 100 characters of entity_results
             entity_str = str(entity_results)
             print(f"\nFirst 100 chars: {entity_str[:100]}")
             print(f"Last 100 chars: {entity_str[-100:]}")
             
-            summary = f"Entity search completed for: {question}"
+            # Extract content from entity_results and send to refine chain
+            if entity_results and hasattr(entity_results, 'items') and entity_results.items:
+                # Combine all content from the results
+                combined_content = ""
+                for item in entity_results.items:
+                    if hasattr(item, 'content'):
+                        combined_content += f"{item.content}\n\n"
+                
+                print(f"\nCombined content length: {len(combined_content)}")
+                print(f"Combined content preview: {combined_content[:200]}...")
+                
+                # Send to refine chain for summarization
+                if combined_content.strip():
+                    summary = create_refine_chain(exist_data=combined_content)
+                    print(f"\nRefine chain summary: {summary}")
+                else:
+                    summary = f"No content found for entity query: {question}"
+            else:
+                summary = f"Entity search completed for: {question}"
                 
         except Exception as e:
             print(f"Error in entity summary processing: {e}")

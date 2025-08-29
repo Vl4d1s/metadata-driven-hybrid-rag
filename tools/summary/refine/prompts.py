@@ -5,16 +5,16 @@ DEFAULT_EXAMPLES = """
 Example 1:
 Input: "Project started Jan 1, 2023. Milestone reached March 5, 2023. Project completed March 20, 2023."
 Output:
-2023-01-01 - PROJECT_START - Project initiation
-2023-03-05 - MILESTONE_REACHED - Key milestone achieved
-2023-03-20 - PROJECT_COMPLETED - Project finalized
+2023-01-01 00:00:00 - PROJECT_START - Project initiation
+2023-03-05 00:00:00 - MILESTONE_REACHED - Key milestone achieved
+2023-03-20 00:00:00 - PROJECT_COMPLETED - Project finalized
 
 Example 2:
 Input: "Meeting scheduled 2023-01-15. Presentation delivered Feb 2023. Follow-up meeting March 2023."
 Output:
-2023-01-15 - MEETING_SCHEDULED - Meeting arranged
-2023-02-01 - PRESENTATION_DELIVERED - Presentation completed
-2023-03-01 - FOLLOWUP_MEETING - Follow-up discussion held
+2023-01-15 00:00:00 - MEETING_SCHEDULED - Meeting arranged
+2023-02-01 00:00:00 - PRESENTATION_DELIVERED - Presentation completed
+2023-03-01 00:00:00 - FOLLOWUP_MEETING - Follow-up discussion held
 """
 
 DEFAULT_RULES = """
