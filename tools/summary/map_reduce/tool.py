@@ -10,8 +10,13 @@ from .prompts import create_map_prompt, create_reduce_prompt
 
 def create_mapreduce_chain(data_path, user_examples=None, user_rules=None) -> str:
     """Create regular summary using map-reduce pattern from provided data path."""
-    with open(data_path, "r", encoding="utf-8") as f:
-        text = f.read().strip()
+    print(f"Creating map-reduce chain for data path: {data_path}")
+    try:
+        with open(data_path, "r", encoding="utf-8") as f:
+            text = f.read().strip()
+    except Exception as e:
+        print(f"Error reading data file: {e}")
+        return ""
     llm = get_llm()
     output_parser = StrOutputParser()
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)

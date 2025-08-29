@@ -55,17 +55,14 @@ Reasoning and previous actions:
 {{agent_scratchpad}}
 
 Use the following format:
-    Question: the input question you must classify
     Thought: think step-by-step about which option fits best
     Action: the action to take, should be one of {{tool_names}} if tools are available, otherwise skip to Final Answer
     Action Input: the input to the action
     Observation: the result of the action
     ... (this Thought/Action/Action Input/Observation can repeat as needed)
-    Final Answer: EXACTLY one label from these options -> {formatted_options}
+    Final Answer: [Return ONLY the classification option, nothing else. Must be one of: {formatted_options}]
 
-If tools are not needed, go directly from Thought to Final Answer.
-
-Classification (return ONLY the option):"""
+CRITICAL: Your Final Answer must contain ONLY the option name, no additional text, explanation, or formatting."""
 
     return PromptTemplate.from_template(template.format(
         formatted_options=formatted_options,
