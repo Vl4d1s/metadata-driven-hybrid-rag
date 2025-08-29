@@ -32,8 +32,8 @@ Reasoning: Looking for a specific detail inside an accident report.
 
 def start_chat():
     print("Type 'quit' to exit")
-    router_agent = get_router_agent(options=["summery", "qna" , "needle"] ,examples=router_examples)
-    suumary_agent = get_summary_agent()
+    router_agent = get_router_agent(options=["summary", "qna" , "needle"] ,examples=router_examples)
+    summary_agent = get_summary_agent(data_path="C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag\\flows\\insurance\\data\\policy\\policy.pdf")
     while True:
         user_question = input("\n❓ Your question: ").strip()
         
@@ -46,6 +46,11 @@ def start_chat():
             result = router_agent.invoke({"question": user_question})
             answer = result["output"]
             print(f"\n💡 Answer: {answer}")
+            if answer.startswith("summary"):
+                print("Routing to Summary Agent...")
+                result = summary_agent.invoke({"input": user_question})
+                answer = result["output"]
+                print(f"\n💡 Answer: {answer}")
             # Classify the question
             # classification = classify_for_agents(user_question, ["summery", "qna"], "qna")
             
