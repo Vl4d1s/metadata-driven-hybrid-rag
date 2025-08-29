@@ -1,5 +1,6 @@
 from langchain_openai import ChatOpenAI
-
+from dotenv import load_dotenv
+load_dotenv()
 def get_llm(model_name: str = "gpt-4o-mini", temperature: float = 0.0) -> ChatOpenAI:
     """
     Returns a ChatOpenAI instance with the specified model name and temperature.
