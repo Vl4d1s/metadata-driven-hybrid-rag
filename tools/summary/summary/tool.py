@@ -47,10 +47,14 @@ def process_summary_question(question: str, data_path: str) -> str:
         try:
             # Define the custom Cypher query template and instructions
             cypher_instructions = """
-            Use this Cypher query pattern to find the node without embedding:
+            Use this Cypher query pattern to find the node and its relationships without embeddings:
             
             MATCH (n:YourLabel {yourProperty: 'someValue'})
-            RETURN apoc.map.removeKey(properties(n), 'embedding') AS filteredNode
+            OPTIONAL MATCH (n)-[r]-(m)
+            RETURN 
+              apoc.map.removeKey(properties(n), 'embedding') AS filteredNode,
+              r,
+              apoc.map.removeKey(properties(m), 'embedding') AS filteredConnectedNode
             
             Label and property mappings:
             - Driver label uses property: idNumber
