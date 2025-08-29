@@ -21,6 +21,7 @@ from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
 from neo4j_graphrag.retrievers import VectorRetriever , VectorCypherRetriever , Text2CypherRetriever
 from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
+from neo4j_graphrag.indexes import create_vector_index
 # Connect to Neo4j database
 driver = GraphDatabase.driver(
     os.getenv("NEO4J_URI"), 
@@ -35,19 +36,28 @@ driver = GraphDatabase.driver(
 
 
 # # Create embedder
-# embedder = OpenAIEmbeddings(model="text-embedding-ada-002")
+embedder = OpenAIEmbeddings(model="text-embedding-ada-002")
 
 
-# def vector_retriever():
-#     # return the vector retriver
-#     # retrive the chunk by vector similarity, with the properties selected
-#     retriever = VectorRetriever(
-#         driver,
-#         index_name="moviePlots",
-#         embedder=embedder,
-#         return_properties=["title", "plot"],
-#     )
-#     return retriever
+def vector_retriever():
+    # return the vector retriver
+    # retrive the chunk by vector similarity, with the properties selected
+    create_vector_index(
+        driver,
+        "PolicyIndex",
+        label="Policy",
+        embedding_property="embedding",
+        dimensions=1536,
+        similarity_fn="cosine", # Or "euclidean"
+        fail_if_exists=False,
+    )
+    retriever = VectorRetriever(
+        driver,
+        index_name="PolicyIndex",
+        embedder=embedder,
+        return_properties=["Chunk_Content"],
+    )
+    return retriever
 
 # def graph_enhanced_vector_retriever():
 #     # Define retrieval query
@@ -166,8 +176,37 @@ Reasoning: Asks about a specific accident event/entity
     # Print the router result
     print(f"Router Result: {result}")
     
-    # Return empty string as requested
-    return ""
+    # Extract the classification from the result
+    classification = result.get('output', 'unknown')
+
+    if classification == "policy":
+        retriever = vector_retriever()
+        result = retriever.search(query_text=question, top_k=5)
+        print("result",result)
+        # Create the LLM
+        llm = OpenAILLM(model_name="gpt-4o-mini",model_params={"temperature":0.2})
+
+        # Create GraphRAG pipeline
+        rag = GraphRAG(retriever=retriever, llm=llm)
+
+        # Search
+        response = rag.search(
+            query_text=question, 
+            retriever_config={"top_k": 5},
+            return_context=True
+            )
+        print("response",response)
+        print("CONTEXT:", response.retriever_result.items)
+        print("ANSWER:", response.answer)
+        return response.answer
+        
+    elif classification == "entity":
+        return "no answer found for this question"
+    else:
+        return "unknown"
+    
+    # Return a meaningful response based on classification
+    return f"Question classified as: {classification}. This question is about {classification} and should be routed to the appropriate handler."
 
 
 def get_graph_rag_tool() -> Tool:
