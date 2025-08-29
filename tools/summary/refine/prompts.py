@@ -3,25 +3,35 @@ from langchain_core.prompts import ChatPromptTemplate
 
 DEFAULT_EXAMPLES = """
 Example 1:
-Input: "Project started Jan 1, 2023. Milestone reached March 5, 2023. Project completed March 20, 2023."
+Input: "Project kickoff meeting at 9:00 AM on Jan 1, 2023. First milestone demo at 2:30 PM March 5, 2023. Project completed late evening March 20, 2023."
 Output:
-2023-01-01 00:00:00 - PROJECT_START - Project initiation
-2023-03-05 00:00:00 - MILESTONE_REACHED - Key milestone achieved
-2023-03-20 00:00:00 - PROJECT_COMPLETED - Project finalized
+2023-01-01 09:00:00 - PROJECT_START - Project kickoff meeting
+2023-03-05 14:30:00 - MILESTONE_REACHED - First milestone demo
+2023-03-20 22:00:00 - PROJECT_COMPLETED - Project finalized
 
 Example 2:
-Input: "Meeting scheduled 2023-01-15. Presentation delivered Feb 2023. Follow-up meeting March 2023."
+Input: "Conference call scheduled for 10:15 AM on 2023-01-15. Presentation delivered around noon in Feb 2023. Follow-up meeting in the morning of March 15, 2023."
 Output:
-2023-01-15 00:00:00 - MEETING_SCHEDULED - Meeting arranged
-2023-02-01 00:00:00 - PRESENTATION_DELIVERED - Presentation completed
-2023-03-01 00:00:00 - FOLLOWUP_MEETING - Follow-up discussion held
+2023-01-15 10:15:00 - MEETING_SCHEDULED - Conference call arranged
+2023-02-01 12:00:00 - PRESENTATION_DELIVERED - Presentation completed
+2023-03-15 09:00:00 - FOLLOWUP_MEETING - Follow-up discussion held
+
+Example 3:
+Input: "System went down at 11:47 PM yesterday. Emergency patch deployed at 3:22 AM today. Full service restored this afternoon at 4:15 PM."
+Output:
+2023-12-14 23:47:00 - SYSTEM_DOWN - System outage occurred
+2023-12-15 03:22:00 - PATCH_DEPLOYED - Emergency fix implemented
+2023-12-15 16:15:00 - SERVICE_RESTORED - Full functionality recovered
 """
 
 DEFAULT_RULES = """
-- Format: YYYY-MM-DD - EVENT_TYPE - Description
+- Format: YYYY-MM-DD HH:MM:SS - EVENT_TYPE - Description
+- Always include specific times when available; estimate reasonable times if not provided
+- Use 24-hour format (HH:MM:SS) for all timestamps
 - Use descriptive event types that match the content domain
-- Estimate dates if not exact (use first day of month/year when approximate)
-- Integrate new events chronologically
+- Estimate dates and times if not exact (use first day of month/year and 00:00:00 when approximate)
+- For vague times like "morning" use 09:00:00, "noon" use 12:00:00, "afternoon" use 15:00:00, "evening" use 18:00:00, "night" use 21:00:00
+- Integrate new events chronologically by both date and time
 - Remove duplicates and keep the most detailed version
 - Output ONLY the timeline events, no explanations
 """
