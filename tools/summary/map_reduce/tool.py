@@ -6,16 +6,70 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.output_parsers import StrOutputParser
 from llms.base_llm import get_llm
 from .prompts import create_map_prompt, create_reduce_prompt
+import os
+
+try:
+    import PyPDF2
+    PDF_AVAILABLE = True
+except ImportError:
+    try:
+        import pypdf
+        PyPDF2 = pypdf
+        PDF_AVAILABLE = True
+    except ImportError:
+        PDF_AVAILABLE = False
+
+
+def get_file_content(file_path: str) -> str:
+    """Read file content, handling both text and PDF files"""
+    if not os.path.exists(file_path):
+        print(f"File not found: {file_path}")
+        return ""
+    
+    # Check if it's a PDF file
+    if file_path.lower().endswith('.pdf'):
+        if not PDF_AVAILABLE:
+            print("PDF reading library not available. Install PyPDF2 or pypdf.")
+            return ""
+        
+        try:
+            text = ""
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page in pdf_reader.pages:
+                    text += page.extract_text() + "\n"
+            return text.strip()
+        except Exception as e:
+            print(f"Error reading PDF file: {e}")
+            return ""
+    
+    # Try to read as text file
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except UnicodeDecodeError:
+        # If UTF-8 fails, try other encodings
+        for encoding in ['latin-1', 'cp1252', 'iso-8859-1']:
+            try:
+                with open(file_path, "r", encoding=encoding) as f:
+                    return f.read().strip()
+            except:
+                continue
+        print(f"Could not decode file: {file_path}")
+        return ""
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return ""
 
 
 def create_mapreduce_chain(data_path, user_examples=None, user_rules=None) -> str:
     """Create regular summary using map-reduce pattern from provided data path."""
     print(f"Creating map-reduce chain for data path: {data_path}")
-    try:
-        with open(data_path, "r", encoding="utf-8") as f:
-            text = f.read().strip()
-    except Exception as e:
-        print(f"Error reading data file: {e}")
+    
+    # Use the new file content reader that handles PDF and text files
+    text = get_file_content(data_path)
+    if not text:
+        print(f"Could not read content from: {data_path}")
         return ""
     llm = get_llm()
     output_parser = StrOutputParser()
