@@ -8,23 +8,10 @@ from flows.insurance.data.models.accident_case import AccidentCase
 # the tool will get files path and schema
 from pydantic import BaseModel
 from tools._functions.llama_extractor import extract_file
+from langchain.tools import Tool
 
 from dotenv import load_dotenv
 load_dotenv()
-
-# FILES_PATH = "C:\DEV\AI_Projects\metadata-driven-hybrid-rag\workflows\insurance\data\reports"
-
-def load_file_to_db(file_path: str , schema: BaseModel ,extract_name: str="file-parser"):
-    file_data = extract_file(file_path,schema,extract_name)
-    print("file_path:",file_path)
-    print("schema:",schema)
-    print("file_data:",file_data)
-    return
-
-testing_file_path = "C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag\\flows\\insurance\\data\\reports\\001.pdf"
- 
-load_file_to_db(testing_file_path,AccidentCase)
-
 
 
 
@@ -42,6 +29,10 @@ driver = GraphDatabase.driver(
         os.getenv("NEO4J_PASSWORD")
     )
 )
+
+
+
+
 
 # # Create embedder
 # embedder = OpenAIEmbeddings(model="text-embedding-ada-002")
@@ -122,3 +113,79 @@ driver = GraphDatabase.driver(
 # print("CONTEXT:", response.retriever_result.items)
 # # CLose the database connection
 # driver.close()
+
+
+def graph_rag_tool(question: str) -> str:
+    """
+    Graph RAG tool that uses a router agent to classify questions.
+    
+    Args:
+        question: The question to classify
+        
+    Returns:
+        Empty string (for now)
+    """
+    from agents.router.agent import get_router_agent
+    
+    # Define options for the router
+    options = ["policy", "entity"]
+    
+    # Define examples to help the router classify questions
+    examples = """
+Question: "What is the coverage amount for collision damage?"
+Classification: policy
+Reasoning: Asks about policy terms and coverage details
+
+Question: "What are the deductibles mentioned in the policy?"
+Classification: policy
+Reasoning: Seeks information about policy terms and conditions
+
+Question: "Tell me about the driver John Smith"
+Classification: entity
+Reasoning: Asks about a specific person/driver entity
+
+Question: "What cars are involved in the accident?"
+Classification: entity
+Reasoning: Asks about specific vehicles/car entities
+
+Question: "Show me details about accident case ID 12345"
+Classification: entity
+Reasoning: Asks about a specific accident entity
+
+Question: "What happened in the accident on Main Street?"
+Classification: entity
+Reasoning: Asks about a specific accident event/entity
+"""
+    
+    # Get the router agent
+    router_agent = get_router_agent(options, examples)
+    
+    # Run the router agent with the question
+    result = router_agent.invoke({"question": question})
+    
+    # Print the router result
+    print(f"Router Result: {result}")
+    
+    # Return empty string as requested
+    return ""
+
+
+def get_graph_rag_tool() -> Tool:
+    """
+    Creates a LangChain Tool that uses a router agent to classify questions about insurance policies or entities.
+    
+    Returns:
+        Tool: LangChain Tool instance for graph RAG functionality
+    """
+    tool_name = "graph_rag_tool"
+    tool_description = "Use this tool to answer QnA questions about insurance policies or entities (drivers, cars, accidents) and return answers."
+    
+    graph_rag_tool_instance = Tool(
+        name=tool_name,
+        description=tool_description,
+        func=lambda question: graph_rag_tool(question),
+        args_schema=None,
+    )
+    return graph_rag_tool_instance
+
+

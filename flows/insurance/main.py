@@ -3,6 +3,7 @@ sys.path.insert(0, 'C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag')
 
 from agents.router.agent import get_router_agent
 from agents.summary.agent import get_summary_agent
+from agents.qna.agent import get_qna_agent
 router_examples = """
 Question: "Explain the additional benefits offered under comprehensive cover"
 Classification: summary
@@ -49,6 +50,12 @@ def start_chat():
             if answer.startswith("summary"):
                 print("Routing to Summary Agent...")
                 result = summary_agent.invoke({"input": user_question})
+                answer = result["output"]
+                print(f"\n💡 Answer: {answer}")
+            elif answer.startswith("qna"):
+                print("Routing to QnA Agent...")
+                qna_agent = get_qna_agent()
+                result = qna_agent.invoke({"input": user_question})
                 answer = result["output"]
                 print(f"\n💡 Answer: {answer}")
             # Classify the question
