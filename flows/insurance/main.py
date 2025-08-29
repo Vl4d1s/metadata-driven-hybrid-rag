@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, 'C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag')
 
 from agents.router.agent import get_router_agent
-
+from agents.summary.agent import get_summary_agent
 router_examples = """
 Question: "Explain the additional benefits offered under comprehensive cover"
 Classification: summary
@@ -33,7 +33,7 @@ Reasoning: Looking for a specific detail inside an accident report.
 def start_chat():
     print("Type 'quit' to exit")
     router_agent = get_router_agent(options=["summery", "qna" , "needle"] ,examples=router_examples)
-
+    suumary_agent = get_summary_agent()
     while True:
         user_question = input("\n❓ Your question: ").strip()
         
