@@ -19,7 +19,7 @@ load_dotenv()
 
 from neo4j import GraphDatabase
 from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
-from neo4j_graphrag.retrievers import VectorRetriever , VectorCypherRetriever , Text2CypherRetriever  , HybridRetriever
+from neo4j_graphrag.retrievers import HybridCypherRetriever,VectorRetriever , VectorCypherRetriever , Text2CypherRetriever  , HybridRetriever
 from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
 from neo4j_graphrag.indexes import create_vector_index , retrieve_vector_index_info , create_fulltext_index , retrieve_fulltext_index_info
@@ -102,6 +102,75 @@ def get_hybrid_retriever_with_indexes(
         vector_index_name=vector_index_name,
         fulltext_index_name=fulltext_index_name,
         embedder=embedder, # An embedder is required to query by text [5, 17]
+    ) # [3, 5, 18]
+    print("HybridRetriever initialized.")
+    return retriever
+
+def get_hybrid_cypher_retriever_with_indexes(
+    vector_index_name: str,
+    fulltext_index_name: str,
+    node_label: str,
+    embedding_property: str,
+    vector_dimensions: int,
+    vector_similarity_fn: str,
+    fulltext_node_properties: List[str],
+    retrieval_query: str,
+) -> HybridCypherRetriever:
+
+    # 1. Check and Create Vector Index
+    print(f"Checking for vector index '{vector_index_name}'...")
+    vector_index_info = retrieve_vector_index_info(
+        driver,
+        index_name=vector_index_name,
+        label_or_type=node_label,
+        embedding_property=embedding_property,
+    ) # [9, 10]
+
+    if vector_index_info is None:
+        print(f"Vector index '{vector_index_name}' does not exist. Creating it now...")
+        create_vector_index(
+            driver,
+            name=vector_index_name,
+            label=node_label,
+            embedding_property=embedding_property,
+            dimensions=vector_dimensions,
+            similarity_fn=vector_similarity_fn,
+            fail_if_exists=False,  # Prevent error if index already exists [1]
+        ) # [1, 7, 11, 12]
+        print(f"Vector index '{vector_index_name}' created successfully.")
+    else:
+        print(f"Vector index '{vector_index_name}' already exists.")
+
+    # 2. Check and Create Fulltext Index
+    print(f"Checking for fulltext index '{fulltext_index_name}'...")
+    fulltext_index_info = retrieve_fulltext_index_info(
+        driver,
+        index_name=fulltext_index_name,
+        label_or_type=node_label,
+        text_properties=fulltext_node_properties,
+    ) # [10, 13, 14]
+
+    if fulltext_index_info is None:
+        print(f"Fulltext index '{fulltext_index_name}' does not exist. Creating it now...")
+        create_fulltext_index(
+            driver,
+            name=fulltext_index_name,
+            label=node_label,
+            node_properties=fulltext_node_properties,
+            fail_if_exists=False,  # Prevent error if index already exists [2]
+        ) # [2, 7, 15, 16]
+        print(f"Fulltext index '{fulltext_index_name}' created successfully.")
+    else:
+        print(f"Fulltext index '{fulltext_index_name}' already exists.")
+
+    # 3. Initialize and Return HybridRetriever
+    print("Initializing HybridRetriever...")
+    retriever = HybridRetriever(
+        driver,
+        vector_index_name=vector_index_name,
+        fulltext_index_name=fulltext_index_name,
+        embedder=embedder, # An embedder is required to query by text [5, 17]
+        retrieval_query=retrieval_query,
     ) # [3, 5, 18]
     print("HybridRetriever initialized.")
     return retriever
@@ -322,7 +391,47 @@ Reasoning: Asks about a specific accident event/entity
         return response.answer
         
     elif classification == "entity":
-        return "no answer found for this question"
+         print("ANSWER:", response.answer)
+         print("\nCONTEXT:")
+         for item in response.retriever_result.items:
+             print(f"Accident ID: {item['accidentId']}")
+             print(f"Description: {item['accidentDescription']}")
+             print(f"Location: {item['location']}")
+             print(f"City: {item['city']}")
+             print(f"Date: {item['date']} at {item['time']}")
+             print(f"Vehicles Involved: {item['numberOfVehicles']}")
+             print(f"Police Agency: {item['policeAgency']}")
+             print(f"Police Report Made: {item['policeReportMade']}")
+             print(f"Similarity Score: {item['similarityScore']}")
+             
+             print("\nInvolved Cars:")
+             for car in item['involvedCars']:
+                 print(f"  - {car['makeAndModel']} ({car['year']}) - License: {car['licensePlate']}")
+                 print(f"    Total Accidents: {car['totalAccidents']}")
+                 if car['otherAccidents']:
+                     print("    Other Accidents:")
+                     for acc in car['otherAccidents']:
+                         print(f"      * {acc['accidentId']} - {acc['date']} {acc['time']} at {acc['location']}, {acc['city']}")
+                 else:
+                     print("    No other accidents found")
+             
+             print("\nInvolved Drivers:")
+             for driver in item['involvedDrivers']:
+                 print(f"  - {driver['firstName']} {driver['lastName']} (DOB: {driver['dateOfBirth']})")
+                 print(f"    License: {driver['licenseNumber']}")
+                 print(f"    Address: {driver['houseNumber']} {driver['street']}, {driver['city']} {driver['zipCode']}")
+                 print(f"    Phone: {driver['phone']}")
+                 print(f"    Total Accidents: {driver['totalAccidents']}")
+                 if driver['otherAccidents']:
+                     print("    Other Accidents:")
+                     for acc in driver['otherAccidents']:
+                         print(f"      * {acc['accidentId']} - {acc['date']} {acc['time']} at {acc['location']}, {acc['city']}")
+                 else:
+                     print("    No other accidents found")
+             
+             print("-" * 50)
+         
+         return "no answer found for this question"
     else:
         return "unknown"
     
