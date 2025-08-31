@@ -4,6 +4,7 @@ sys.path.insert(0, 'C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag')
 from agents.router.agent import get_router_agent
 from agents.summary.agent import get_summary_agent
 from agents.qna.agent import get_qna_agent
+from agents.needle.agent import get_needle_agent
 router_examples = """
 Question: "Explain the additional benefits offered under comprehensive cover"
 Classification: summary
@@ -25,9 +26,17 @@ Question: "What is the maximum amount the insurer will pay for windscreen replac
 Classification: needle
 Reasoning: Looking for a very specific limit (number) buried in the policy text.
 
+Question: "Find the section about collision coverage"
+Classification: needle
+Reasoning: Looking for a specific section location in the policy.
+
 Question: "What injuries were reported in the accident involving driver 445-78-9012?"
 Classification: needle
-Reasoning: Looking for a specific detail inside an accident report.
+Reasoning: Looking for a specific detail about a specific driver ID in an accident report.
+
+Question: "Locate information about driver John Smith"
+Classification: needle
+Reasoning: Looking for specific entity location using driver name identifier.
 """
 
 
@@ -58,6 +67,61 @@ def start_chat():
                 result = qna_agent.invoke({"input": user_question})
                 answer = result["output"]
                 print(f"\n💡 Answer: {answer}")
+            elif answer.startswith("needle"):
+                print("Routing to Needle Agent...")
+                needle_agent = get_needle_agent()
+                result = needle_agent.invoke({"input": user_question})
+                needle_result = result["output"]
+                
+                # Try to parse and display the needle results nicely
+                try:
+                    import json
+                    needle_data = json.loads(needle_result)
+                    
+                    print(f"\n🔍 Needle Search Results:")
+                    print("=" * 60)
+                    print(f"Query: {needle_data.get('query', 'N/A')}")
+                    print(f"Classification: {needle_data.get('classification', 'N/A')}")
+                    print(f"Total Locations Found: {needle_data.get('total_found', 0)}")
+                    
+                    # Display generated answer if available
+                    if needle_data.get('generated_answer'):
+                        print(f"\n💡 Generated Answer:")
+                        print(f"   {needle_data.get('generated_answer')}")
+                    
+                    print("-" * 60)
+                    
+                    for i, location in enumerate(needle_data.get('locations', []), 1):
+                        print(f"\nLocation {i}:")
+                        print(f"  📍 Anchor: {location.get('anchor', 'N/A')}")
+                        
+                        if 'document_id' in location:
+                            # Policy document location
+                            print(f"  📄 Document: {location.get('document_id', 'N/A').split('\\')[-1]}")
+                            print(f"  📖 Page: {location.get('page_number', 'N/A')}")
+                            print(f"  📑 Section: {location.get('section_name', 'N/A')}")
+                            print(f"  🔢 Chunk: {location.get('chunk_index', 'N/A')}/{location.get('total_chunks_in_section', 'N/A')}")
+                        elif 'entity_id' in location:
+                            # Entity location
+                            print(f"  🆔 Entity ID: {location.get('entity_id', 'N/A')}")
+                            print(f"  📍 Location: {location.get('location', 'N/A')}")
+                            print(f"  🏙️ City: {location.get('city', 'N/A')}")
+                            print(f"  📅 Date: {location.get('date', 'N/A')}")
+                        
+                        print(f"  ⭐ Score: {location.get('similarity_score', 'N/A')}")
+                        print(f"  📝 Content:")
+                        full_content = location.get('full_content', location.get('description', 'N/A'))
+                        print(f"     \"{full_content[:300]}{'...' if len(full_content) > 300 else ''}\"")
+                        print("-" * 40)
+                    
+                    print("=" * 60)
+                    
+                except (json.JSONDecodeError, Exception) as e:
+                    print(f"\n🔍 Raw Needle Result:")
+                    print("=" * 50)
+                    print(needle_result)
+                    print("=" * 50)
+
             # Classify the question
             # classification = classify_for_agents(user_question, ["summery", "qna"], "qna")
             
