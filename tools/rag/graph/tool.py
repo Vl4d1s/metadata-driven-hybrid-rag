@@ -165,7 +165,7 @@ def get_hybrid_cypher_retriever_with_indexes(
 
     # 3. Initialize and Return HybridRetriever
     print("Initializing HybridRetriever...")
-    retriever = HybridRetriever(
+    retriever = HybridCypherRetriever(
         driver,
         vector_index_name=vector_index_name,
         fulltext_index_name=fulltext_index_name,
@@ -391,47 +391,83 @@ Reasoning: Asks about a specific accident event/entity
         return response.answer
         
     elif classification == "entity":
-         print("ANSWER:", response.answer)
-         print("\nCONTEXT:")
-         for item in response.retriever_result.items:
-             print(f"Accident ID: {item['accidentId']}")
-             print(f"Description: {item['accidentDescription']}")
-             print(f"Location: {item['location']}")
-             print(f"City: {item['city']}")
-             print(f"Date: {item['date']} at {item['time']}")
-             print(f"Vehicles Involved: {item['numberOfVehicles']}")
-             print(f"Police Agency: {item['policeAgency']}")
-             print(f"Police Report Made: {item['policeReportMade']}")
-             print(f"Similarity Score: {item['similarityScore']}")
-             
-             print("\nInvolved Cars:")
-             for car in item['involvedCars']:
-                 print(f"  - {car['makeAndModel']} ({car['year']}) - License: {car['licensePlate']}")
-                 print(f"    Total Accidents: {car['totalAccidents']}")
-                 if car['otherAccidents']:
-                     print("    Other Accidents:")
-                     for acc in car['otherAccidents']:
-                         print(f"      * {acc['accidentId']} - {acc['date']} {acc['time']} at {acc['location']}, {acc['city']}")
-                 else:
-                     print("    No other accidents found")
-             
-             print("\nInvolved Drivers:")
-             for driver in item['involvedDrivers']:
-                 print(f"  - {driver['firstName']} {driver['lastName']} (DOB: {driver['dateOfBirth']})")
-                 print(f"    License: {driver['licenseNumber']}")
-                 print(f"    Address: {driver['houseNumber']} {driver['street']}, {driver['city']} {driver['zipCode']}")
-                 print(f"    Phone: {driver['phone']}")
-                 print(f"    Total Accidents: {driver['totalAccidents']}")
-                 if driver['otherAccidents']:
-                     print("    Other Accidents:")
-                     for acc in driver['otherAccidents']:
-                         print(f"      * {acc['accidentId']} - {acc['date']} {acc['time']} at {acc['location']}, {acc['city']}")
-                 else:
-                     print("    No other accidents found")
-             
-             print("-" * 50)
-         
-         return "no answer found for this question"
+        retrieval_query = """
+RETURN 
+  node.Id AS accidentId,
+  node.Description AS accidentDescription,
+  node.Location AS location,
+  node.Date AS date,
+  node.Time AS time,
+  node.City AS city,
+  node.NumberOfVehiclesInvolved AS numberOfVehicles,
+  node.PoliceAgency AS policeAgency,
+  node.PoliceReportMade AS policeReportMade,
+  score AS similarityScore,
+  collect { 
+    MATCH (node)<-[:INVOLVED_AT]-(c:Car) 
+    OPTIONAL MATCH (c)-[:INVOLVED_AT]->(otherAcc:Accident)
+    WHERE otherAcc <> node
+    WITH c, collect(DISTINCT otherAcc) AS otherAccidents
+    RETURN {
+      nodeType: 'Car',
+      makeAndModel: c.MakeAndModel,
+      year: c.Year,
+      licensePlate: c.LicensePlate,
+      otherAccidents: [acc IN otherAccidents | {
+        accidentId: acc.Id,
+        date: acc.Date,
+        time: acc.Time,
+        location: acc.Location,
+        city: acc.City
+      }],
+      totalAccidents: size(otherAccidents) + 1
+    }
+  } as involvedCars,
+  collect { 
+    MATCH (node)<-[:INVOLVED_AT]-(d:Driver) 
+    OPTIONAL MATCH (d)-[:INVOLVED_AT]->(otherAcc:Accident)
+    WHERE otherAcc <> node
+    WITH d, collect(DISTINCT otherAcc) AS otherAccidents
+    RETURN {
+      nodeType: 'Driver',
+      firstName: d.FirstName,
+      lastName: d.LastName,
+      dateOfBirth: d.DateOfBirth,
+      licenseNumber: d.LicenseNumber,
+      phone: d.Phone,
+      city: d.City,
+      street: d.Street,
+      houseNumber: d.HouseNumber,
+      zipCode: d.ZipCode,
+      idNumber: d.IdNumber,
+      otherAccidents: [acc IN otherAccidents | {
+        accidentId: acc.Id,
+        date: acc.Date,
+        time: acc.Time,
+        location: acc.Location,
+        city: acc.City
+      }],
+      totalAccidents: size(otherAccidents) + 1
+    }
+  } as involvedDrivers
+ORDER BY similarityScore DESC
+"""
+        retriever = get_hybrid_cypher_retriever_with_indexes(
+            "AccidentVectorIndex","AccidentFullTextIndex","Accident","embedding",1536,"cosine",["Description"],retrieval_query
+        )
+        llm = OpenAILLM(model_name="gpt-4o-mini",model_params={"temperature":0.2})
+        rag = GraphRAG(retriever=retriever, llm=llm)
+        response = rag.search(
+            query_text=question,
+            retriever_config={"top_k": 2 , "ranker": "LINEAR", "alpha": 0.7},
+            return_context=True
+        )
+        print("ANSWER:", response.answer)
+        print("\nCONTEXT:")
+        for item in response.retriever_result.items:
+            print(item)
+        return response.answer
+        return "no answer found for this question"
     else:
         return "unknown"
     
