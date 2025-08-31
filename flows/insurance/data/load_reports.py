@@ -19,14 +19,14 @@ from neo4j_graphrag.retrievers import VectorRetriever , VectorCypherRetriever , 
 from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
 
-
+currant_file_end = "ACC-002"
 
 
 def load_file_to_db(file_path: str , schema: BaseModel ,extract_name: str="file-parser"):
     file_data : AccidentCase = extract_file(file_path,schema,extract_name)
     
-    short_uuid = str(uuid.uuid4())[:8]
-    accident_id = f"ACC-{short_uuid}"
+    # short_uuid = str(uuid.uuid4())[:8]
+    accident_id = currant_file_end
     driver_information = file_data['driver_information']
     owner_information = file_data['owner_information'] 
     other_driver_1_information = file_data['other_driver_1_information']
@@ -493,6 +493,6 @@ SET car4.embedding = $car4_embedding'''
             graph_driver.close()
     return
 
-testing_file_path = "C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag\\flows\\insurance\\data\\reports\\010.pdf"
+testing_file_path = f"C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag\\flows\\insurance\\data\\reports\\{currant_file_end}.pdf"
  
 load_file_to_db(testing_file_path,AccidentCase)
