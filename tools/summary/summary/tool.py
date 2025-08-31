@@ -17,7 +17,48 @@ class SummaryToolInput(BaseModel):
     """Input schema for the summary tool"""
     question: str = Field(description="The question from the user")
 
+# Concise Section-Based Summarization
 
+SECTION_SUMMARY_EXAMPLES = """
+Example 1:
+Input sections:
+
+Page: 1-3, Subject: Coverage, Content: Vehicle damage, theft, liability coverage. Collision $50k, theft/vandalism $30k, liability $1M.
+Page: 4-5, Subject: Premiums, Content: Based on age, vehicle, history, location. Base $800 annually.
+Page: 6, Subject: Claims, Content: Report within 24hrs. Need police report, photos, witnesses.
+
+Output:
+Page: 1-3, Coverage
+Comprehensive vehicle protection including collision damage up to $50,000, theft/vandalism coverage up to $30,000, and third-party liability coverage up to $1,000,000.
+Page: 4-5, Premiums
+Annual premium calculation starting at $800 base rate, adjusted based on driver age, vehicle type, driving history, and geographic location.
+Page: 6, Claims
+Claims reporting process requiring notification within 24 hours of incident with mandatory documentation including police report, photos, and witness statements.
+Example 2:
+Input sections:
+
+Page: 1, Subject: Incident, Content: March 15 collision at Main/Oak, 3:30 PM. Honda Civic vs Ford F-150.
+Page: 2-3, Subject: Drivers, Content: Smith (35, clean record) and Johnson (28, one ticket).
+Page: 4, Subject: Damages, Content: Civic $8,500 front damage, F-150 $2,300 rear damage.
+
+Output:
+Page: 1, Incident
+March 15, 3:30 PM collision at Main/Oak intersection between Honda Civic and Ford F-150.
+Page: 2-3, Drivers
+John Smith (35, clean record) and Sarah Johnson (28, one 2022 speeding violation).
+Page: 4, Damages
+Total damages $10,800: Honda Civic front-end $8,500, Ford F-150 rear bumper $2,300.
+"""
+
+SECTION_SUMMARY_RULES = """
+CONCISE SECTION RULES:
+
+1. FORMAT: "Page: X-Y, Section Name \n section summary description"
+2. PAGE REFS: Use "Page: X-Y" for ranges, "Page: X" for single pages
+3. SECTION NAMES: Clear, descriptive titles without ALL CAPS
+4. SUMMARIES: One detailed sentence per section with key facts and figures
+5. OUTPUT: List each section separately with page reference and summary only
+"""
 
 
 def process_summary_question(question: str, data_path: str) -> str:
@@ -51,13 +92,13 @@ def process_summary_question(question: str, data_path: str) -> str:
             sections_summary = []
             for section in sections:
                 print(f"Section: {section['sectionName']}")
-                print(f"Section Content: {section['sectionContent'][:100]}")
+                # print(f"Section Content: {section['sectionContent'][:100]}")
                 print(f"Section Pages: {section['sectionPages']}")
                 section_summary = create_mapreduce_chain(section['sectionContent'])
-                print(f"Section Summary: {section_summary[:100]}")
+                # print(f"Section Summary: {section_summary[:100]}")
                 print("-" * 100)
                 sections_summary.append(f"Page: {section['sectionPages']}Subject: {section['sectionName']} Content: {section_summary}")
-            summary = create_refine_chain_from_strings(sections_summary,)
+            summary = create_refine_chain_from_strings(sections_summary,SECTION_SUMMARY_EXAMPLES,SECTION_SUMMARY_RULES)
              
         # print(f"Document Summary: {summary}")
     elif classification == "entity_summary":
