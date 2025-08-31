@@ -12,6 +12,9 @@ from tools._functions.text_to_cypher import quick_text_to_cypher_search
 from tools.summary.refine.tool import create_refine_chain
 from tools._functions.get_document_sections import get_document_sections
 from tools.summary.refine.tool import create_refine_chain_from_strings
+from evaluations.answer_correctness import evaluate_answer_correctness
+from flows.insurance.evaluationFlow.groundTruths.policy_summary import document_summary_ground_truth 
+from flows.insurance.evaluationFlow.groundTruths.accident_summary import accident_summary_ground_truth
 
 class SummaryToolInput(BaseModel):
     """Input schema for the summary tool"""
@@ -88,6 +91,8 @@ def process_summary_question(question: str, data_path: str) -> str:
         sections = get_document_sections(data_path)
         if not sections or len(sections) == 0 :
             summary = create_mapreduce_chain(data_path)
+            summary_evaluation = evaluate_answer_correctness(question, summary, document_summary_ground_truth)
+            print(f"Summary Evaluation: {summary_evaluation}")
         else: 
             sections_summary = []
             for section in sections:
@@ -99,6 +104,8 @@ def process_summary_question(question: str, data_path: str) -> str:
                 print("-" * 100)
                 sections_summary.append(f"Page: {section['sectionPages']}Subject: {section['sectionName']} Content: {section_summary}")
             summary = create_refine_chain_from_strings(sections_summary,SECTION_SUMMARY_EXAMPLES,SECTION_SUMMARY_RULES)
+            summary_evaluation = evaluate_answer_correctness(question, summary, document_summary_ground_truth)
+            print(f"Summary Evaluation: {summary_evaluation}")
              
         # print(f"Document Summary: {summary}")
     elif classification == "entity_summary":
@@ -157,6 +164,8 @@ def process_summary_question(question: str, data_path: str) -> str:
                 # Send to refine chain for summarization
                 if combined_content.strip():
                     summary = create_refine_chain(exist_data=combined_content)
+                    summary_evaluation = evaluate_answer_correctness(question, summary, accident_summary_ground_truth)
+                    print(f"Entity Summary Evaluation: {summary_evaluation}")
                     print(f"\nRefine chain summary: {summary}")
                 else:
                     summary = f"No content found for entity query: {question}"
