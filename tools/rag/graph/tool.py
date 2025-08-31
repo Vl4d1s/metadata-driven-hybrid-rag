@@ -209,7 +209,7 @@ def vector_retriever(index_name: str,label: str,embedding_property: str,return_p
 
 
 
-def graph_rag_tool(question: str) -> str:
+def graph_rag_tool(question: str,return_context: bool = False):
     """
     Graph RAG tool that uses a router agent to classify questions.
     
@@ -264,17 +264,6 @@ Reasoning: Asks about a specific accident event/entity
     classification = result.get('output', 'unknown')
 
     if classification == "policy":
-        # vector retriever for policy
-        # retriever = vector_retriever("PolicyVectorIndex","Chunk","embedding",["Chunk_Content"])
-        # llm = OpenAILLM(model_name="gpt-4o-mini",model_params={"temperature":0.2})
-        # rag = GraphRAG(retriever=retriever, llm=llm)
-        # response = rag.search(
-        #     query_text=question, 
-        #     retriever_config={"top_k": 3},
-        #     return_context=True
-        #     )
-
-
         # hybrid retriever for policy
         retriever = get_hybrid_retriever_with_indexes(
             "PolicyVectorIndex","PolicyFullTextIndex","Chunk","embedding",1536,"cosine",["Chunk_Content"]
@@ -323,7 +312,10 @@ Reasoning: Asks about a specific accident event/entity
         #     context.append(item.content)
         # print("CONTEXT:", context)
         print("ANSWER:", response.answer)
-
+        if return_context:
+            return response.answer, response.retriever_result.items
+        else:
+            return response.answer
         return response.answer
         
     elif classification == "entity":
@@ -402,7 +394,10 @@ ORDER BY similarityScore DESC
         print("\nCONTEXT:")
         for item in response.retriever_result.items:
             print(item)
-        return response.answer
+        if return_context:
+            return response.answer, response.retriever_result.items
+        else:
+            return response.answer
         return "no answer found for this question"
     else:
         return "unknown"

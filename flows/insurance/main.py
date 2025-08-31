@@ -122,24 +122,5 @@ def start_chat():
                     print(needle_result)
                     print("=" * 50)
 
-            # Classify the question
-            # classification = classify_for_agents(user_question, ["summery", "qna"], "qna")
-            
-            # Route to appropriate agent
-            # if classification == "summery":
-            #     print("Routing to Timeline Agent...")
-            #     timeline_agent = get_timeline_agent(llm=llm)
-            #     result = timeline_agent.invoke({"input": user_question})
-            # elif classification == "qna":
-            #     print("Routing to QnA Agent...")
-            #     qna_agent = get_qna_agent(llm=llm)
-            #     result = qna_agent.invoke({"input": user_question})
-            # else:
-            #     print(f"\u274C Unknown classification: {classification}")
-            #     continue
-                
-            # answer = result["output"]
-            # print(f"\n💡 Answer: {answer}")
-            # print("-" * 50)
 
 start_chat()
