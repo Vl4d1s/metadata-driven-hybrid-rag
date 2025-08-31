@@ -234,7 +234,18 @@ def generate_answer_from_locations(query: str, locations: List[Dict[str, Any]]) 
         if 'page' in meta:
             metadata_info.append(f"(page {meta['page']}, chunk {meta['chunk']}, score {meta['score']}, section \"{meta['section']}\", document \"{meta['document']}\")")
         else:
-            metadata_info.append(f"(entity {meta['entity_id']}, type {meta['entity_type']}, score {meta['score']})")
+            # For entity data, extract accident ID from description
+            accident_id = "N/A"
+            if 'description' in meta and 'accidentId=' in meta['description']:
+                try:
+                    # Extract accident ID from the content string
+                    start = meta['description'].find("accidentId='") + 12
+                    end = meta['description'].find("'", start)
+                    if start > 11 and end > start:
+                        accident_id = meta['description'][start:end]
+                except:
+                    pass
+            metadata_info.append(f"(node \"Accident\", accident_id \"{accident_id}\")")
     
     # Create prompt for answer generation
     prompt = f"""Based on the following context from insurance documents, answer the question: "{query}"
@@ -246,13 +257,14 @@ Available Context Metadata:
 {chr(10).join(metadata_info)}
 
 Instructions:
-1. Start your answer by stating which document the information was found in
+1. Start your answer by stating which document or accident data the information was found in
 2. Provide a direct, specific answer to the question
 3. Quote relevant text from the context in your answer
 4. If specific amounts, dates, or details are mentioned, include them
 5. Be concise but complete
-6. After your answer, add a section titled "Context used to answer:" and list ONLY the most relevant context that was actually used to answer the question in this exact format:
-   (page X, chunk Y, score Z, section "Section Name", content "most relevant text excerpt used for the answer")
+6. After your answer, add a section titled "Context used to answer:" and list ONLY the most relevant context that was actually used to answer the question in this format:
+   - For policy documents: (page X, chunk Y, score Z, section "Section Name", content "most relevant text excerpt used for the answer")
+   - For accident/entity data: (node "Accident", accident_id "ACC-XXX", content "most relevant text excerpt used for the answer")
 
 Answer:"""
     
@@ -437,85 +449,108 @@ IMPORTANT RULES:
             needle_results["generated_answer"] = generate_answer_from_locations(query, needle_results["locations"])
         
     elif classification == "entity":
-        # Custom retrieval query for entity location finding
+        # Use the same approach as QnA tool - just like graph RAG tool
         retrieval_query = """
-        RETURN 
-          node.Id AS entityId,
-          node.Description AS description,
-          node.Location AS location,
-          node.Date AS date,
-          node.Time AS time,
-          node.City AS city,
-          score AS similarityScore,
-          'Accident' AS entityType,
-          'accident_' + node.Id AS anchor
-        ORDER BY similarityScore DESC
-        """
-        
+RETURN 
+  node.Id AS accidentId,
+  node.Description AS accidentDescription,
+  node.Location AS location,
+  node.Date AS date,
+  node.Time AS time,
+  node.City AS city,
+  node.NumberOfVehiclesInvolved AS numberOfVehicles,
+  node.PoliceAgency AS policeAgency,
+  node.PoliceReportMade AS policeReportMade,
+  score AS similarityScore,
+  collect { 
+    MATCH (node)<-[:INVOLVED_AT]-(c:Car) 
+    OPTIONAL MATCH (c)-[:INVOLVED_AT]->(otherAcc:Accident)
+    WHERE otherAcc <> node
+    WITH c, collect(DISTINCT otherAcc) AS otherAccidents
+    RETURN {
+      nodeType: 'Car',
+      makeAndModel: c.MakeAndModel,
+      year: c.Year,
+      licensePlate: c.LicensePlate,
+      otherAccidents: [acc IN otherAccidents | {
+        accidentId: acc.Id,
+        date: acc.Date,
+        time: acc.Time,
+        location: acc.Location,
+        city: acc.City
+      }],
+      totalAccidents: size(otherAccidents) + 1
+    }
+  } as involvedCars,
+  collect { 
+    MATCH (node)<-[:INVOLVED_AT]-(d:Driver) 
+    OPTIONAL MATCH (d)-[:INVOLVED_AT]->(otherAcc:Accident)
+    WHERE otherAcc <> node
+    WITH d, collect(DISTINCT otherAcc) AS otherAccidents
+    RETURN {
+      nodeType: 'Driver',
+      firstName: d.FirstName,
+      lastName: d.LastName,
+      dateOfBirth: d.DateOfBirth,
+      licenseNumber: d.LicenseNumber,
+      phone: d.Phone,
+      city: d.City,
+      street: d.Street,
+      houseNumber: d.HouseNumber,
+      zipCode: d.ZipCode,
+      idNumber: d.IdNumber,
+      otherAccidents: [acc IN otherAccidents | {
+        accidentId: acc.Id,
+        date: acc.Date,
+        time: acc.Time,
+        location: acc.Location,
+        city: acc.City
+      }],
+      totalAccidents: size(otherAccidents) + 1
+    }
+  } as involvedDrivers
+ORDER BY similarityScore DESC
+"""
         retriever = get_hybrid_cypher_retriever_with_indexes(
-            "AccidentVectorIndex", "AccidentFullTextIndex", "Accident", "embedding", 1536, "cosine", ["Description"], retrieval_query
+            "AccidentVectorIndex","AccidentFullTextIndex","Accident","embedding",1536,"cosine",["Description"],retrieval_query
         )
-        
-        # Search for relevant entities
-        search_results = retriever.search(
+        llm = OpenAILLM(model_name="gpt-4o-mini",model_params={"temperature":0.2})
+        rag = GraphRAG(retriever=retriever, llm=llm)
+        response = rag.search(
             query_text=query,
-            top_k=3
+            retriever_config={"top_k": 3 , "ranker": "LINEAR", "alpha": 0.7},
+            return_context=True
         )
         
-        print(f"\n--- Needle Search Results for Entities ---")
-        print(f"Found {len(search_results.items)} relevant entity locations")
+        print("ANSWER:", response.answer)
+        print("\nCONTEXT:")
+        context_items = []
+        for i, item in enumerate(response.retriever_result.items):
+            print(f"Item {i+1}:")
+            print(item)
+            context_items.append(str(item))
         
-        for i, item in enumerate(search_results.items):
-            try:
-                # Parse entity information
-                if isinstance(item.content, str):
-                    try:
-                        entity_data = json.loads(item.content)
-                    except json.JSONDecodeError:
-                        # If JSON parsing fails, treat as plain text
-                        entity_data = {
-                            'entityId': f'entity_{i+1}',
-                            'entityType': 'Accident',
-                            'description': item.content,
-                            'anchor': f'entity_accident_{i+1}'
-                        }
-                else:
-                    entity_data = item.content
-                
-                location_info = {
-                    "entity_id": entity_data.get('entityId', 'N/A'),
-                    "entity_type": entity_data.get('entityType', 'N/A'),
-                    "description": entity_data.get('description', 'N/A'),
-                    "location": entity_data.get('location', 'N/A'),
-                    "date": entity_data.get('date', 'N/A'),
-                    "time": entity_data.get('time', 'N/A'),
-                    "city": entity_data.get('city', 'N/A'),
-                    "anchor": entity_data.get('anchor', f"entity_{entity_data.get('entityId', 'unknown')}"),
-                    "similarity_score": entity_data.get('similarityScore', item.metadata.get('score', 'N/A')),
-                    "rank": i + 1
-                }
-                
-                needle_results["locations"].append(location_info)
-                needle_results["anchors"].append(location_info["anchor"])
-                
-                print(f"\nEntity Location {i+1}:")
-                print(f"  Anchor: {location_info['anchor']}")
-                print(f"  Entity ID: {location_info['entity_id']}")
-                print(f"  Type: {location_info['entity_type']}")
-                print(f"  Location: {location_info['location']}")
-                print(f"  Date/Time: {location_info['date']} {location_info['time']}")
-                print(f"  City: {location_info['city']}")
-                print(f"  Score: {location_info['similarity_score']}")
-                print(f"  Description: {location_info['description'][:100]}...")
-                
-            except Exception as e:
-                print(f"Error processing entity {i+1}: {e}")
-                
-        needle_results["total_found"] = len(needle_results["locations"])
-        
-        # Generate answer based on found entity locations
-        if needle_results["locations"]:
-            needle_results["generated_answer"] = generate_answer_from_locations(query, needle_results["locations"])
+        # Generate enhanced answer with context information (like policy section)
+        if response.retriever_result.items:
+            # Prepare context data for answer generation
+            locations_for_answer = []
+            for i, item in enumerate(response.retriever_result.items):
+                # Parse the content to extract accident and entity info
+                content_str = str(item.content)
+                locations_for_answer.append({
+                    "entity_type": "Accident",
+                    "description": content_str,
+                    "rank": i + 1,
+                    "similarity_score": "N/A"  # Score not easily accessible from this format
+                })
+            
+            enhanced_answer = generate_answer_from_locations(query, locations_for_answer)
+            needle_results["generated_answer"] = enhanced_answer
+        else:
+            needle_results["generated_answer"] = response.answer
+            
+        needle_results["context"] = context_items
+        needle_results["total_found"] = len(context_items)
         
     else:
         needle_results["error"] = f"Unknown classification: {classification}"
