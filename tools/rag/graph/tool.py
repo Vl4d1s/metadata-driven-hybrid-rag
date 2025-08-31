@@ -459,7 +459,7 @@ ORDER BY similarityScore DESC
         rag = GraphRAG(retriever=retriever, llm=llm)
         response = rag.search(
             query_text=question,
-            retriever_config={"top_k": 2 , "ranker": "LINEAR", "alpha": 0.7},
+            retriever_config={"top_k": 3 , "ranker": "LINEAR", "alpha": 0.7},
             return_context=True
         )
         print("ANSWER:", response.answer)
