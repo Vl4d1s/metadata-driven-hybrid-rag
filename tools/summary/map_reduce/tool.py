@@ -62,12 +62,12 @@ def get_file_content(file_path: str) -> str:
         return ""
 
 
-def create_mapreduce_chain(data_path, user_examples=None, user_rules=None) -> str:
+def create_mapreduce_chain(data_path, user_examples=None, user_rules=None,exist_data=None) -> str:
     """Create regular summary using map-reduce pattern from provided data path."""
     print(f"Creating map-reduce chain for data path: {data_path}")
     
     # Use the new file content reader that handles PDF and text files
-    text = get_file_content(data_path)
+    text = exist_data if exist_data else get_file_content(data_path)
     if not text:
         print(f"Could not read content from: {data_path}")
         return ""

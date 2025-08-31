@@ -40,7 +40,7 @@ DEFAULT_RULES = """
 def create_initial_refine_prompt(user_examples=None, user_rules=None) -> ChatPromptTemplate:
     """Create the initial prompt for refine pattern"""
     return ChatPromptTemplate.from_template(
-        f"""You are an expert analyst. Create a timeline from this text.
+        f"""You are an expert analyst. Create a Summary from this text.
 Examples:
 {user_examples if user_examples else DEFAULT_EXAMPLES}
 
@@ -49,14 +49,14 @@ Rules:
 
 Text: {{text}}
 
-Timeline events:"""
+Summary:"""
     )
 
 
 def create_refine_prompt(user_examples=None, user_rules=None) -> ChatPromptTemplate:
     """Create the refine prompt template for iteratively updating timeline"""
     return ChatPromptTemplate.from_template(
-        f"""You are an expert analyst. Refine the existing timeline with new information.
+        f"""You are an expert analyst. Refine the existing Summary with new information.
 Examples:
 {user_examples if user_examples else DEFAULT_EXAMPLES}
 
@@ -64,13 +64,13 @@ Rules:
 {user_rules if user_rules else DEFAULT_RULES}
 
 
-Existing timeline:
+Existing Summary:
 {{existing_timeline}}
 
 New text to integrate:
 {{new_text}}
 
-Refined timeline:"""
+Refined Summary:"""
     )
 
 

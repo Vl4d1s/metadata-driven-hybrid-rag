@@ -10,10 +10,14 @@ import re
 from tools.summary.map_reduce.tool import create_mapreduce_chain
 from tools._functions.text_to_cypher import quick_text_to_cypher_search
 from tools.summary.refine.tool import create_refine_chain
+from tools._functions.get_document_sections import get_document_sections
+from tools.summary.refine.tool import create_refine_chain_from_strings
 
 class SummaryToolInput(BaseModel):
     """Input schema for the summary tool"""
     question: str = Field(description="The question from the user")
+
+
 
 
 def process_summary_question(question: str, data_path: str) -> str:
@@ -39,8 +43,23 @@ def process_summary_question(question: str, data_path: str) -> str:
     print(f"Router Result: {classification}")
     summary = ""
     if classification == "document_summary":
-        summary = create_mapreduce_chain(data_path)
         print("Document Summary Request - Processing policy documents")
+        sections = get_document_sections(data_path)
+        if not sections or len(sections) == 0 :
+            summary = create_mapreduce_chain(data_path)
+        else: 
+            sections_summary = []
+            for section in sections:
+                print(f"Section: {section['sectionName']}")
+                print(f"Section Content: {section['sectionContent'][:100]}")
+                print(f"Section Pages: {section['sectionPages']}")
+                section_summary = create_mapreduce_chain(section['sectionContent'])
+                print(f"Section Summary: {section_summary[:100]}")
+                print("-" * 100)
+                sections_summary.append(f"Page: {section['sectionPages']}Subject: {section['sectionName']} Content: {section_summary}")
+            summary = create_refine_chain_from_strings(sections_summary,)
+             
+        # print(f"Document Summary: {summary}")
     elif classification == "entity_summary":
         print("Entity Summary Request - Processing entity summaries")
         
