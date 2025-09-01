@@ -1,7 +1,7 @@
 from langchain_core.prompts import PromptTemplate
 
 
-def router_agent_prompt(options: list[str], examples: str) -> PromptTemplate:
+def router_agent_prompt(options: list[str], examples: str,rules: str = "") -> PromptTemplate:
     """Create the classifier prompt template with few-shot examples and role-playing"""
     
     # Format options as a numbered list
@@ -17,7 +17,7 @@ Question: "When did the American Civil War start?"
 Classification: qna
 Reasoning: Seeks a specific date/fact
 
-Question: "Can you give me a timeline of the company's growth?"
+Question: "Can you give me a summary of the company's growth?"
 Classification: summary
 Reasoning: Requests chronological overview
 
@@ -25,7 +25,7 @@ Question: "Who is the CEO of the company?"
 Classification: qna
 Reasoning: Asks for specific person/information
 
-Question: "Tell me about the history of artificial intelligence"
+Question: "Tell me about the history timeline of artificial intelligence"
 Classification: summary
 Reasoning: Asks for broad overview/narrative"""
     
@@ -48,6 +48,9 @@ EXAMPLES:
 
 {all_examples}
 
+rules:
+{rules}
+
 NOW CLASSIFY THIS QUESTION:
 Question: {{question}}
 
@@ -66,6 +69,7 @@ CRITICAL: Your Final Answer must contain ONLY the option name, no additional tex
 
     return PromptTemplate.from_template(template.format(
         formatted_options=formatted_options,
-        all_examples=all_examples
+        all_examples=all_examples,
+        rules=rules
     ))
 

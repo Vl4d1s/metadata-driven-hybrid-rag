@@ -6,9 +6,9 @@ from agents.summary.agent import get_summary_agent
 from agents.qna.agent import get_qna_agent
 from agents.needle.agent import get_needle_agent
 router_examples = """
-Question: "Explain the additional benefits offered under comprehensive cover"
+Question: "summarize the additional benefits offered under comprehensive cover"
 Classification: summary
-Reasoning: Requests an overview of multiple benefits in the policy.
+Reasoning: summary mentioned in the question should be summarized.
 
 Question: "Summarize the accident of the driver 445-78-9012"
 Classification: summary
@@ -22,7 +22,7 @@ Question: "What is the car of the driver 445-78-9012?"
 Classification: qna
 Reasoning: Asks for a specific piece of information about the driver’s vehicle.
 
-Question: "What is the maximum amount the insurer will pay for windscreen replacement?"
+Question: "Find the maximum amount the insurer will pay for windscreen replacement"
 Classification: needle
 Reasoning: Looking for a very specific limit (number) buried in the policy text.
 
@@ -30,7 +30,7 @@ Question: "Find the section about collision coverage"
 Classification: needle
 Reasoning: Looking for a specific section location in the policy.
 
-Question: "What injuries were reported in the accident involving driver 445-78-9012?"
+Question: "Locate What injuries were reported in the accident involving driver 445-78-9012?"
 Classification: needle
 Reasoning: Looking for a specific detail about a specific driver ID in an accident report.
 
@@ -39,10 +39,16 @@ Classification: needle
 Reasoning: Looking for specific entity location using driver name identifier.
 """
 
+router_rules = """
+- usually qna questions includes (who, what, when, where, why, how) keywords.
+- usually summary questions includes (summarize, overview, summary) keywords.
+- usually needle questions includes (find, locate, locate in the policy) keywords.
+"""
+
 
 def start_chat():
     print("Type 'quit' to exit")
-    router_agent = get_router_agent(options=["summary", "qna" , "needle"] ,examples=router_examples)
+    router_agent = get_router_agent(options=["summary", "qna" , "needle"] ,examples=router_examples,rules=router_rules)
     summary_agent = get_summary_agent(data_path="C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag\\flows\\insurance\\data\\policy\\policy.pdf")
     while True:
         user_question = input("\n❓ Your question: ").strip()
