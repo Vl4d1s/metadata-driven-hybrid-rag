@@ -222,7 +222,7 @@ def graph_rag_tool(question: str,return_context: bool = False):
     from agents.router.agent import get_router_agent
     
     # Define options for the router
-    options = ["policy", "entity"]
+    options = ["policy", "entity", "both"]
     
     # Define examples to help the router classify questions
     examples = """
@@ -249,6 +249,14 @@ Reasoning: Asks about a specific accident entity
 Question: "What happened in the accident on Main Street?"
 Classification: entity
 Reasoning: Asks about a specific accident event/entity
+
+Question: "What is the coverage for the accident that happened on Main Street?"
+Classification: both
+Reasoning: Asks about policy coverage AND specific accident entity
+
+Question: "Are the vehicles involved in accident 12345 covered under the policy?"
+Classification: both
+Reasoning: Asks about policy coverage AND specific accident/vehicle entities
 """
     
     # Get the router agent
@@ -404,6 +412,161 @@ ORDER BY similarityScore DESC
         else:
             return response.answer
         return "no answer found for this question"
+    
+    elif classification == "both":
+        # Retrieve from both policy and entity indexes with 2 chunks each
+        
+        # 1. Get policy retriever and search
+        policy_retriever = get_hybrid_retriever_with_indexes(
+            "PolicyVectorIndex","PolicyFullTextIndex","Chunk","embedding",1536,"cosine",["Chunk_Content"]
+        )
+        policy_response = policy_retriever.search(
+            query_text=question,
+            top_k=2,
+            effective_search_ratio=2,
+            ranker="LINEAR",
+            alpha=0.7,
+        )
+        
+        # 2. Get entity retriever and search
+        entity_retrieval_query = """
+RETURN 
+  node.Id AS accidentId,
+  node.Description AS accidentDescription,
+  node.Location AS location,
+  node.Date AS date,
+  node.Time AS time,
+  node.City AS city,
+  node.NumberOfVehiclesInvolved AS numberOfVehicles,
+  node.PoliceAgency AS policeAgency,
+  node.PoliceReportMade AS policeReportMade,
+  score AS similarityScore,
+  collect { 
+    MATCH (node)<-[:INVOLVED_AT]-(c:Car) 
+    OPTIONAL MATCH (c)-[:INVOLVED_AT]->(otherAcc:Accident)
+    WHERE otherAcc <> node
+    WITH c, collect(DISTINCT otherAcc) AS otherAccidents
+    RETURN {
+      nodeType: 'Car',
+      makeAndModel: c.MakeAndModel,
+      year: c.Year,
+      licensePlate: c.LicensePlate,
+      otherAccidents: [acc IN otherAccidents | {
+        accidentId: acc.Id,
+        date: acc.Date,
+        time: acc.Time,
+        location: acc.Location,
+        city: acc.City
+      }],
+      totalAccidents: size(otherAccidents) + 1
+    }
+  } as involvedCars,
+  collect { 
+    MATCH (node)<-[:INVOLVED_AT]-(d:Driver) 
+    OPTIONAL MATCH (d)-[:INVOLVED_AT]->(otherAcc:Accident)
+    WHERE otherAcc <> node
+    WITH d, collect(DISTINCT otherAcc) AS otherAccidents
+    RETURN {
+      nodeType: 'Driver',
+      firstName: d.FirstName,
+      lastName: d.LastName,
+      dateOfBirth: d.DateOfBirth,
+      licenseNumber: d.LicenseNumber,
+      phone: d.Phone,
+      city: d.City,
+      street: d.Street,
+      houseNumber: d.HouseNumber,
+      zipCode: d.ZipCode,
+      idNumber: d.IdNumber,
+      otherAccidents: [acc IN otherAccidents | {
+        accidentId: acc.Id,
+        date: acc.Date,
+        time: acc.Time,
+        location: acc.Location,
+        city: acc.City
+      }],
+      totalAccidents: size(otherAccidents) + 1
+    }
+  } as involvedDrivers
+ORDER BY similarityScore DESC
+"""
+        entity_retriever = get_hybrid_cypher_retriever_with_indexes(
+            "AccidentVectorIndex","AccidentFullTextIndex","Accident","embedding",1536,"cosine",["Description"],entity_retrieval_query
+        )
+        entity_response = entity_retriever.search(
+            query_text=question,
+            top_k=2,
+            effective_search_ratio=2,
+            ranker="LINEAR",
+            alpha=0.7,
+        )
+        
+        # 3. Combine contexts from both retrievers
+        combined_context = []
+        
+        # Add policy context
+        if policy_response and policy_response.items:
+            for item in policy_response.items:
+                combined_context.append({
+                    "source": "policy",
+                    "content": item.content,
+                    "metadata": item.metadata
+                })
+        
+        # Add entity context
+        if entity_response and entity_response.items:
+            for item in entity_response.items:
+                combined_context.append({
+                    "source": "entity", 
+                    "content": item.content,
+                    "metadata": item.metadata
+                })
+        
+        # 4. Create combined context string for the LLM
+        context_text = ""
+        for i, ctx in enumerate(combined_context):
+            context_text += f"\n--- Context {i+1} (from {ctx['source']}) ---\n"
+            context_text += str(ctx['content'])
+            context_text += "\n"
+        
+        # 5. Use LLM to answer based on combined context
+        llm = OpenAILLM(model_name="gpt-4o-mini",model_params={"temperature":0.2})
+        
+        # Create a prompt that includes both contexts
+        prompt = f"""
+You are an expert insurance claims analyst and policy specialist with years of experience in handling complex insurance cases. You have access to comprehensive policy documentation and detailed accident/entity records.
+
+Your task is to provide a thorough, professional analysis by examining both policy terms and specific case details. You should approach this as a seasoned professional who can seamlessly connect policy provisions with real-world scenarios.
+
+QUESTION TO ANALYZE: {question}
+
+AVAILABLE INFORMATION:
+{context_text}
+
+INSTRUCTIONS FOR YOUR ANALYSIS:
+1. As an insurance expert, first identify the key policy provisions that apply to this situation
+2. Then examine the specific entity details (accidents, drivers, vehicles) that are relevant
+3. Provide a comprehensive professional assessment that connects the policy terms to the specific case details
+4. If there are any coverage determinations to be made, explain your reasoning clearly
+5. Maintain a professional, authoritative tone befitting an experienced insurance analyst
+
+Please provide your expert analysis and recommendations based on the available information.
+"""
+        
+        # Get LLM response
+        llm_response = llm.invoke(prompt)
+        
+        if not return_context:
+            print("ANSWER:", llm_response.content)
+            print(f"\nCONTEXT (Policy: {len([c for c in combined_context if c['source'] == 'policy'])}, Entity: {len([c for c in combined_context if c['source'] == 'entity'])}):")
+            for i, ctx in enumerate(combined_context):
+                print(f"Context {i+1} ({ctx['source']}): {str(ctx['content'])[:200]}...")
+        
+        if return_context:
+            return llm_response.content, combined_context
+        else:
+            return llm_response.content
+    
     else:
         return "unknown"
     
