@@ -50,7 +50,7 @@ def get_hybrid_retriever_with_indexes(
 ):
 
     # 1. Check and Create Vector Index
-    print(f"Checking for vector index '{vector_index_name}'...")
+    # print(f"Checking for vector index '{vector_index_name}'...")
     vector_index_info = retrieve_vector_index_info(
         driver,
         index_name=vector_index_name,
@@ -70,11 +70,11 @@ def get_hybrid_retriever_with_indexes(
             fail_if_exists=False,  # Prevent error if index already exists [1]
         ) # [1, 7, 11, 12]
         print(f"Vector index '{vector_index_name}' created successfully.")
-    else:
-        print(f"Vector index '{vector_index_name}' already exists.")
+    # else:
+        # print(f"Vector index '{vector_index_name}' already exists.")
 
     # 2. Check and Create Fulltext Index
-    print(f"Checking for fulltext index '{fulltext_index_name}'...")
+    # print(f"Checking for fulltext index '{fulltext_index_name}'...")
     fulltext_index_info = retrieve_fulltext_index_info(
         driver,
         index_name=fulltext_index_name,
@@ -83,7 +83,7 @@ def get_hybrid_retriever_with_indexes(
     ) # [10, 13, 14]
 
     if fulltext_index_info is None:
-        print(f"Fulltext index '{fulltext_index_name}' does not exist. Creating it now...")
+        # print(f"Fulltext index '{fulltext_index_name}' does not exist. Creating it now...")
         create_fulltext_index(
             driver,
             name=fulltext_index_name,
@@ -92,18 +92,18 @@ def get_hybrid_retriever_with_indexes(
             fail_if_exists=False,  # Prevent error if index already exists [2]
         ) # [2, 7, 15, 16]
         print(f"Fulltext index '{fulltext_index_name}' created successfully.")
-    else:
-        print(f"Fulltext index '{fulltext_index_name}' already exists.")
+    # else:
+    #     print(f"Fulltext index '{fulltext_index_name}' already exists.")
 
     # 3. Initialize and Return HybridRetriever
-    print("Initializing HybridRetriever...")
+    # print("Initializing HybridRetriever...")
     retriever = HybridRetriever(
         driver,
         vector_index_name=vector_index_name,
         fulltext_index_name=fulltext_index_name,
         embedder=embedder, # An embedder is required to query by text [5, 17]
     ) # [3, 5, 18]
-    print("HybridRetriever initialized.")
+    # print("HybridRetriever initialized.")
     return retriever
 
 def get_hybrid_cypher_retriever_with_indexes(
@@ -276,20 +276,23 @@ Reasoning: Asks about a specific accident event/entity
             return_context=True
         )
 
-        print("\n--- LLM Generated Answer ---")
+        if not return_context:
+            print("\n--- LLM Generated Answer ---")
         # print(response)
                         
         if response.retriever_result:
-            print("\n--- Retrieved Context Details ---")
-            print(f"Number of retrieved items: {len(response.retriever_result.items)}")
+            if not return_context:
+                print("\n--- Retrieved Context Details ---")
+                print(f"Number of retrieved items: {len(response.retriever_result.items)}")
             
             # Print retriever metadata if available
             # if response.retriever_result.metadata:
             #     print(f"Retriever metadata: {response.retriever_result.metadata}")
             
             for i, item in enumerate(response.retriever_result.items):
-                print(f"\nItem {i+1}:")
-                print(f"  Score: {item.metadata.get('score', 'N/A')}")  # Score is in metadata
+                if not return_context:
+                    print(f"\nItem {i+1}:")
+                    print(f"  Score: {item.metadata.get('score', 'N/A')}")  # Score is in metadata
                 
                 # Parse the content string to extract relevant information
                 try:
@@ -299,12 +302,13 @@ Reasoning: Asks about a specific accident event/entity
                     # Fallback to eval if not valid JSON (use with caution)
                     content_data = eval(item.content)
                 
-                print(f"  Document ID: {content_data.get('DocumentId', 'N/A')}")
-                print(f"  Page Number: {content_data.get('PageNumber', 'N/A')}")
-                print(f"  Section: {content_data.get('SectionName', 'N/A')}")
-                print(f"  Chunk Index: {content_data.get('Chunk_Index', 'N/A')}")
-                print(f"  Total Chunks in Section: {content_data.get('TotalChunksInSection', 'N/A')}")
-                print(f"  Content (first 200 chars): {content_data.get('Chunk_Content', '')}")
+                if not return_context:
+                    print(f"  Document ID: {content_data.get('DocumentId', 'N/A')}")
+                    print(f"  Page Number: {content_data.get('PageNumber', 'N/A')}")
+                    print(f"  Section: {content_data.get('SectionName', 'N/A')}")
+                    print(f"  Chunk Index: {content_data.get('Chunk_Index', 'N/A')}")
+                    print(f"  Total Chunks in Section: {content_data.get('TotalChunksInSection', 'N/A')}")
+                    print(f"  Content (first 200 chars): {content_data.get('Chunk_Content', '')}")
         else:
             print("\nNo context was retrieved for the query.")
         # context = []
@@ -390,8 +394,9 @@ ORDER BY similarityScore DESC
             retriever_config={"top_k": 3 , "ranker": "LINEAR", "alpha": 0.7},
             return_context=True
         )
-        print("ANSWER:", response.answer)
-        print("\nCONTEXT:")
+        if not return_context:
+            print("ANSWER:", response.answer)
+            print("\nCONTEXT:")
         for item in response.retriever_result.items:
             print(item)
         if return_context:

@@ -1,51 +1,66 @@
+import sys
+sys.path.insert(0, 'C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag')
 from evaluations.context_recall import evaluate_context_recall
+from evaluations.context_precision import evaluate_context_precision
 from tools.rag.graph.tool import graph_rag_tool
+from evaluations.faithfulness import evaluate_faithfulness  
 
 
 
 def qna_evaluation(question: str, ground_truth: str):
     answer, contexts = graph_rag_tool(question, return_context=True)
+    # print("ANSWER:", answer)
+    contexts = [str(context) for context in contexts]
     evaluate_context_recall(question, answer, ground_truth, contexts)
+    evaluate_context_precision(question, answer, ground_truth, contexts)
+    evaluate_faithfulness(question, answer, contexts)
 
 
 
 
 
-emergancy_question = "Will I get a replacement car if mine is stolen and not recovered?"
-emergancy_ground_truth = "Yes, you will get a replacement car for up to 10 days if yours is stolen and not recovered."
-Accidents_Claims_question = "What should I do immediately after a car accident?"
-Accidents_Claims_ground_truth = """
-After a car accident, you should:
+# emergancy_question = "Will I get a replacement car if mine is stolen and not recovered?"
+# emergancy_ground_truth = "Yes, you will get a replacement car for up to 10 days if yours is stolen and not recovered."
+# qna_evaluation(emergancy_question, emergancy_ground_truth)
 
-Note the registration of vehicles involved and exchange details.
+# Accidents_Claims_question = "What should I do immediately after a car accident?"
+# Accidents_Claims_ground_truth = """
+# After a car accident, you should:
 
-Do not admit liability.
+# Note the registration of vehicles involved and exchange details.
 
-Report the accident to the Gardaí immediately (within 24 hours if injuries occur).
+# Do not admit liability.
 
-Record injuries, damages, and make a diagram/photos of the scene.
+# Report the accident to the Gardaí immediately (within 24 hours if injuries occur).
 
-Obtain names and addresses of witnesses.
+# Record injuries, damages, and make a diagram/photos of the scene.
 
-Notify Zurich within 48 hours via the 24 Hour Emergency Helpline
-"""
-Coverage_Benefits_question = "Does the policy cover medical expenses after an accident?"
-Coverage_Benefits_ground_truth = """
-Yes, the policy covers medical expenses. The insurer will reimburse the cost of medical treatment for the insured or any occupant of the insured vehicle for bodily injury caused by violent accidental external and visible means in direct connection with the insured vehicle. Coverage is limited to €200 per person injured and only applies to Comprehensive cover.
- """
+# Obtain names and addresses of witnesses.
 
-Coverage_Benefits_question2 = "Does the policy cover child care accessories such as car seats or buggies?"
-Coverage_Benefits_ground_truth2 = """
-Yes, the policy covers child care accessories. The insurer will pay up to €550 for loss of or damage to any child's push chair, buggy, carrycot or car seat caused by accident, fire, theft or attempted theft following forcible entry. When the vehicle is unattended, accessories (excluding fitted car seat) must be concealed in a locked boot. This applies only to Comprehensive cover.
-"""
-Conditions_question = "Am I covered if I drive under the influence of alcohol or drugs?"
-Conditions_ground_truth = """
-No, you are not covered if you drive under the influence of alcohol or drugs. The insurer shall not be liable for any loss or damage if the insured or any insured driver are convicted of driving under the influence of alcohol or drugs. If convicted following a road traffic accident, the insurer is entitled to recover all monies paid in respect of any loss or claim arising from that accident.
-"""
+# Notify Zurich within 48 hours via the 24 Hour Emergency Helpline
+# """
+# qna_evaluation(Accidents_Claims_question, Accidents_Claims_ground_truth)
+# Coverage_Benefits_question = "Does the policy cover medical expenses after an accident?"
+# Coverage_Benefits_ground_truth = """
+# Yes, the policy covers medical expenses. The insurer will reimburse the cost of medical treatment for the insured or any occupant of the insured vehicle for bodily injury caused by violent accidental external and visible means in direct connection with the insured vehicle. Coverage is limited to €200 per person injured and only applies to Comprehensive cover.
+#  """
+# qna_evaluation(Coverage_Benefits_question, Coverage_Benefits_ground_truth)
+
+# Coverage_Benefits_question2 = "Does the policy cover child care accessories such as car seats or buggies?"
+# Coverage_Benefits_ground_truth2 = """
+# Yes, the policy covers child care accessories. The insurer will pay up to €550 for loss of or damage to any child's push chair, buggy, carrycot or car seat caused by accident, fire, theft or attempted theft following forcible entry. When the vehicle is unattended, accessories (excluding fitted car seat) must be concealed in a locked boot. This applies only to Comprehensive cover.
+# """
+# qna_evaluation(Coverage_Benefits_question2, Coverage_Benefits_ground_truth2)
+# Conditions_question = "Am I covered if I drive under the influence of alcohol or drugs?"
+# Conditions_ground_truth = """
+# No, you are not covered if you drive under the influence of alcohol or drugs. The insurer shall not be liable for any loss or damage if the insured or any insured driver are convicted of driving under the influence of alcohol or drugs. If convicted following a road traffic accident, the insurer is entitled to recover all monies paid in respect of any loss or claim arising from that accident.
+# """
+# qna_evaluation(Conditions_question, Conditions_ground_truth)
 Discounts_question = "What happens to my no-claims discount if I make one fire or theft claim?"
 Discounts_ground_truth = """
 Your no-claims discount will be preserved if you make one fire or theft claim. The discount presently applying will not be stepped back at the next renewal, though the percentage will not be increased at your next renewal date.
 """
+qna_evaluation(Discounts_question, Discounts_ground_truth)
 Data_Protection_question = "What personal data does the company collect under this policy?"
 Data_Protection_ground_truth = """
 The company collects contact and identifying information, financial information, employment details, medical and health details including personal habits, sensitive information including criminal convictions and penalty points, information about the insured risk, and claims data including incident circumstances and relevant financial, medical and health information.

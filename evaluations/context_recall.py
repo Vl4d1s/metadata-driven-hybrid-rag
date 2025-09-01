@@ -33,49 +33,27 @@ def evaluate_context_recall(question: str, answer: str, ground_truth: str, conte
     # Extract and print the context recall score
     recall_score = results['context_recall']
     
-    print("=" * 60)
-    print("📊 CONTEXT RECALL EVALUATION RESULTS")
-    print("=" * 60)
-    print(f"Question: {question}")
-    print(f"Generated Answer: {answer}")
-    print(f"Ground Truth: {ground_truth}")
-    print(f"Number of Context Items: {len(contexts)}")
+    # print("=" * 60)
+    # print("📊 CONTEXT RECALL EVALUATION RESULTS")
+    # print("=" * 60)
+    # print(f"Question: {question}")
+    # print(f"Generated Answer: {answer}")
+    # print(f"Ground Truth: {ground_truth}")
+    # print(f"Number of Context Items: {len(contexts)}")
     print("-" * 60)
-    print(f"🎯 Context Recall Score: {recall_score:.4f}")
-    print(f"📈 Context Recall Grade: {get_recall_grade(recall_score)}")
+    print(f"🎯 Context Recall Score: {recall_score}")
     print("-" * 60)
     
     # Print context details
-    print("📝 Retrieved Context:")
-    for i, context in enumerate(contexts, 1):
-        print(f"  Context {i}: {context[:200]}{'...' if len(context) > 200 else ''}")
+    # print("📝 Retrieved Context:")
+    # for i, context in enumerate(contexts, 1):
+    #     print(f"  Context {i}: {context[:200]}{'...' if len(context) > 200 else ''}")
     
-    print("=" * 60)
+    # print("=" * 60)
     
     return results
 
-def get_recall_grade(score: float) -> str:
-    """
-    Convert context recall score to letter grade.
-    
-    Args:
-        score (float): Context recall score (0.0 to 1.0)
-        
-    Returns:
-        str: Letter grade representation
-    """
-    if score >= 0.9:
-        return "A+ (Excellent)"
-    elif score >= 0.8:
-        return "A (Very Good)"
-    elif score >= 0.7:
-        return "B (Good)"
-    elif score >= 0.6:
-        return "C (Fair)"
-    elif score >= 0.5:
-        return "D (Poor)"
-    else:
-        return "F (Very Poor)"
+
 
 
 
