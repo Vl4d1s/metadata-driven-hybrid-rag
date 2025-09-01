@@ -37,6 +37,7 @@ Reasoning: Requests summary of policy document content
 """
 
 
+
 def create_entity_extraction_prompt() -> PromptTemplate:
     """Create prompt for extracting entity IDs from questions"""
     return PromptTemplate.from_template("""

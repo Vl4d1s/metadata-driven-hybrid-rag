@@ -1,7 +1,3 @@
-"""
-Unified Summary Tool that uses Router Agent for intelligent routing
-"""
-
 from langchain_core.tools import Tool
 from langchain_core.pydantic_v1 import BaseModel, Field
 from agents.router.agent import get_router_agent
@@ -15,14 +11,11 @@ from tools.summary.refine.tool import create_refine_chain_from_strings
 from evaluations.answer_correctness import evaluate_answer_correctness
 from flows.insurance.evaluationFlow.groundTruths.policy_summary import document_summary_ground_truth 
 from flows.insurance.evaluationFlow.groundTruths.accident_summary import accident_summary_ground_truth
-
 class SummaryToolInput(BaseModel):
     """Input schema for the summary tool"""
     question: str = Field(description="The question from the user")
 
-# Concise Section-Based Summarization
-
-SECTION_SUMMARY_EXAMPLES = """
+section_summary_examples = """
 Example 1:
 Input sections:
 
@@ -53,7 +46,7 @@ Page: 4, Damages
 Total damages $10,800: Honda Civic front-end $8,500, Ford F-150 rear bumper $2,300.
 """
 
-SECTION_SUMMARY_RULES = """
+section_summary_rules = """
 CONCISE SECTION RULES:
 
 1. FORMAT: "Page: X-Y, Section Name \n section summary description"
@@ -63,51 +56,31 @@ CONCISE SECTION RULES:
 5. OUTPUT: List each section separately with page reference and summary only
 """
 
-
 def process_summary_question(question: str, data_path: str) -> str:
-    """
-    Process the summary question using router agent to determine if it's:
-    1. Document summary (policy documents)
-    2. Entity-specific summary (driver, accident, car with IDs)
-    """
-    
-    # Define routing options
-    routing_options = ["document_summary", "entity_summary"]
-    
-    # Define examples for router agent
-    router_examples = create_router_examples()
-    
-    # Create router agent with examples
-    router_agent = get_router_agent(options=routing_options, examples=router_examples)
-    
     # Use router to classify the question
+    routing_options = ["document_summary", "entity_summary"]
+    router_examples = create_router_examples()
+    router_agent = get_router_agent(options=routing_options, examples=router_examples)
     router_result = router_agent.invoke({"question": question})
     print(f"Router Result: {router_result}")
     classification = router_result.get("output", "").strip().lower()
-    print(f"Router Result: {classification}")
     summary = ""
     if classification == "document_summary":
         print("Document Summary Request - Processing policy documents")
         sections = get_document_sections(data_path)
         if not sections or len(sections) == 0 :
             summary = create_mapreduce_chain(data_path)
-            summary_evaluation = evaluate_answer_correctness(question, summary, document_summary_ground_truth)
-            print(f"Summary Evaluation: {summary_evaluation}")
+            # summary_evaluation = evaluate_answer_correctness(question, summary, document_summary_ground_truth)
+            # print(f"Summary Evaluation: {summary_evaluation}")
         else: 
             sections_summary = []
             for section in sections:
-                print(f"Section: {section['sectionName']}")
-                # print(f"Section Content: {section['sectionContent'][:100]}")
-                print(f"Section Pages: {section['sectionPages']}")
                 section_summary = create_mapreduce_chain(section['sectionContent'])
-                # print(f"Section Summary: {section_summary[:100]}")
-                print("-" * 100)
                 sections_summary.append(f"Page: {section['sectionPages']}Subject: {section['sectionName']} Content: {section_summary}")
-            summary = create_refine_chain_from_strings(sections_summary,SECTION_SUMMARY_EXAMPLES,SECTION_SUMMARY_RULES)
-            summary_evaluation = evaluate_answer_correctness(question, summary, document_summary_ground_truth)
-            print(f"Summary Evaluation: {summary_evaluation}")
-             
-        # print(f"Document Summary: {summary}")
+            summary = create_refine_chain_from_strings(sections_summary,section_summary_examples,section_summary_rules)
+            # summary_evaluation = evaluate_answer_correctness(question, summary, document_summary_ground_truth)
+            # print(f"Summary Evaluation: {summary_evaluation}")
+
     elif classification == "entity_summary":
         print("Entity Summary Request - Processing entity summaries")
         
@@ -143,30 +116,19 @@ def process_summary_question(question: str, data_path: str) -> str:
             
             # Use text_to_cypher with the enhanced instructions
             entity_results = quick_text_to_cypher_search(enhanced_query)
-            # print(f"Entity Search Results: {entity_results}")
-            
-            # Print first and last 100 characters of entity_results
-            entity_str = str(entity_results)
-            print(f"\nFirst 100 chars: {entity_str[:100]}")
-            print(f"Last 100 chars: {entity_str[-100:]}")
-            
-            # Extract content from entity_results and send to refine chain
             if entity_results and hasattr(entity_results, 'items') and entity_results.items:
                 # Combine all content from the results
                 combined_content = ""
                 for item in entity_results.items:
                     if hasattr(item, 'content'):
                         combined_content += f"{item.content}\n\n"
-                
-                print(f"\nCombined content length: {len(combined_content)}")
-                print(f"Combined content preview: {combined_content[:200]}...")
-                
+      
                 # Send to refine chain for summarization
                 if combined_content.strip():
                     summary = create_refine_chain(exist_data=combined_content)
-                    summary_evaluation = evaluate_answer_correctness(question, summary, accident_summary_ground_truth)
-                    print(f"Entity Summary Evaluation: {summary_evaluation}")
-                    print(f"\nRefine chain summary: {summary}")
+                    # summary_evaluation = evaluate_answer_correctness(question, summary, accident_summary_ground_truth)
+                    # print(f"Entity Summary Evaluation: {summary_evaluation}")
+                    # print(f"\nRefine chain summary: {summary}")
                 else:
                     summary = f"No content found for entity query: {question}"
             else:
