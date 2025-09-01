@@ -11,7 +11,7 @@ from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
 from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
 from .utils import get_hybrid_retriever_with_indexes, get_hybrid_cypher_retriever_with_indexes
-from .prompts import router_examples , retrieval_query_entity
+from .prompts import router_examples, retrieval_query_entity, insurance_analyst_prompt
 # Connect to Neo4j database
 driver = GraphDatabase.driver(
     os.getenv("NEO4J_URI"), 
@@ -165,25 +165,7 @@ def graph_rag_tool(question: str,return_context: bool = False):
         llm = OpenAILLM(model_name="gpt-4o-mini",model_params={"temperature":0.2})
         
         # Create a prompt that includes both contexts
-        prompt = f"""
-You are an expert insurance claims analyst and policy specialist with years of experience in handling complex insurance cases. You have access to comprehensive policy documentation and detailed accident/entity records.
-
-Your task is to provide a thorough, professional analysis by examining both policy terms and specific case details. You should approach this as a seasoned professional who can seamlessly connect policy provisions with real-world scenarios.
-
-QUESTION TO ANALYZE: {question}
-
-AVAILABLE INFORMATION:
-{context_text}
-
-INSTRUCTIONS FOR YOUR ANALYSIS:
-1. As an insurance expert, first identify the key policy provisions that apply to this situation
-2. Then examine the specific entity details (accidents, drivers, vehicles) that are relevant
-3. Provide a comprehensive professional assessment that connects the policy terms to the specific case details
-4. If there are any coverage determinations to be made, explain your reasoning clearly
-5. Maintain a professional, authoritative tone befitting an experienced insurance analyst
-
-Please provide your expert analysis and recommendations based on the available information.
-"""
+        prompt = insurance_analyst_prompt.format(question=question, context_text=context_text)
         
         # Get LLM response
         llm_response = llm.invoke(prompt)
