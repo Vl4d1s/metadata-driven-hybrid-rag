@@ -5,6 +5,7 @@ from agents.router.agent import get_router_agent
 from agents.summary.agent import get_summary_agent
 from agents.qna.agent import get_qna_agent
 from agents.needle.agent import get_needle_agent
+from agents.statistical.agent import get_statistical_agent
 router_examples = """
 Question: "summarize the additional benefits offered under comprehensive cover"
 Classification: summary
@@ -37,18 +38,27 @@ Reasoning: Looking for a specific detail about a specific driver ID in an accide
 Question: "Locate information about driver John Smith"
 Classification: needle
 Reasoning: Looking for specific entity location using driver name identifier.
+
+Question: "Analyze the accident patterns in 2024"
+Classification: statistical
+Reasoning: Requests statistical analysis and pattern recognition using 'analyze' keyword.
+
+Question: "Give me the statistics of how many drivers were involved in more than one accident"
+Classification: statistical
+Reasoning: Explicitly asks for statistics using 'give me the statistics' and 'how many' keywords.
 """
 
 router_rules = """
 - usually qna questions includes (who, what, when, where, why, how) keywords.
 - usually summary questions includes (summarize, overview, summary) keywords.
 - usually needle questions includes (find, locate, locate in the policy) keywords.
+- usually statistical questions includes (analyze, statistics, how many, count, patterns, trends) keywords.
 """
 
 
 def start_chat():
     print("Type 'quit' to exit")
-    router_agent = get_router_agent(options=["summary", "qna" , "needle"] ,examples=router_examples,rules=router_rules)
+    router_agent = get_router_agent(options=["summary", "qna" , "needle", "statistical"] ,examples=router_examples,rules=router_rules)
     summary_agent = get_summary_agent(data_path="C:\\DEV\\AI_Projects\\metadata-driven-hybrid-rag\\flows\\insurance\\data\\policy\\policy.pdf")
     while True:
         user_question = input("\n❓ Your question: ").strip()
@@ -127,6 +137,12 @@ def start_chat():
                     print("=" * 50)
                     print(needle_result)
                     print("=" * 50)
+            elif answer.startswith("statistical"):
+                print("Routing to Statistical Agent...")
+                statistical_agent = get_statistical_agent()
+                result = statistical_agent.invoke({"input": user_question})
+                answer = result["output"]
+                print(f"\n📊 Statistical Answer: {answer}")
 
 
 start_chat()

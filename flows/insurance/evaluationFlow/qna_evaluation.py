@@ -124,7 +124,7 @@ def qna_evaluation(question: str, ground_truth: str):
 
 
 
-# how_many_accidents_question = "how many accidents Ashley Johnson involved at? detail the accidents"
+# how_many_accidents_question = "what is the number of accidents Ashley Johnson involved at? detail the accidents"
 # how_many_accidents_ground_truth = """
 # 1. Accident ID: ACC-001
 #     ◦ Date: February 8, 2025
